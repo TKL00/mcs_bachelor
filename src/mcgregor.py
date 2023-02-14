@@ -2,167 +2,196 @@
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
+from copy import deepcopy
 from workspace import Workspace
 
-def mcs_mcgregor(G1, G2):
+def mcs_mcgregor(G, H, anchor_point={}):
     '''
-    Takes two NetworkX graphs as input and computes
-    the Maximum Common Subraph using the Algorithm suggested by
+    Computes the Maximum Common Subgraph using the Algorithm suggested by
     James J. McGregor in 1982.
-    Precondition: |V_1| <= |V_2|
+
+    `Precondition`: |V_G| <= |V_H|
+
+        `Paramters`:
+            G (Graph): A NetworkX graph
+            H (Graph): A NetworkX graph
+
+        `Optional`:
+            anchor_point (dict: int -> int): A valid mapping from nodes in G to nodes in H
+        
+        `Returns`:
+            mapping (dict: int -> int): The node correspondence for the MCS
+            marcs (np.array): The MARCS array for the MCS
+            arcsleft (int): The number of arcs in G that can be mapped to arcs in H
+
+    If an anchor point is given (i.e. a subgraph isomorphism between G and H),
+    the algorithm produces a common subgraph branching out from this anchor point.
     '''
-    
 
-    G1_node_amt, G2_node_amt = len(G1.nodes), len(G2.nodes)
-    G1_edge_amt, G2_edge_amt = len(G1.edges), len(G2.edges)
+    ## Auxiliary function
+    def node_to_arc_matrix(G):
+        """
+        Computes a |V| x |E| matrix with (v, e) = 1 if
+        node `v` is incident with edge `e`.
+        """
+        V_size = len(G.nodes)
+        A_size = len(G.edges)
+        
+        node_arc_matrix = np.zeros((V_size, A_size))
+        edges = list(G.edges)
 
-    G1_node_to_arc, G2_node_to_arc = node_to_arc_matrix(G1), node_to_arc_matrix(G2)
+        ## Node pair (u, v) are both incident to the arc denoted by "Index"
+        for index in range(len(G.edges)):
+            (u, v) = edges[index]
+            node_arc_matrix[u][index] = 1
+            node_arc_matrix[v][index] = 1
+        
+        return node_arc_matrix
+
+    ## Initialization
+    G_node_amt, H_node_amt = len(G.nodes), len(H.nodes)
+    G_edge_amt, H_edge_amt = len(G.edges), len(H.edges)
+
+    assert G_node_amt <= H_node_amt, f"The number of nodes in first input graph {G_node_amt} is larger than the number of nodes in the second input graph {H_node_amt}"
+
+    G_node_to_arc, H_node_to_arc = node_to_arc_matrix(G), node_to_arc_matrix(H)
 
     ## Initialize the ARC Matrix (q1 x q2) to be full of 1's (all arcs are compatible)
-    MARCS = np.ones((G1_edge_amt, G2_edge_amt))
+    MARCS = np.ones((G_edge_amt, H_edge_amt))
+
     ## Counting array to determine whether a row in MARCS has been reduced to all zeros
-    MARCS_row_ones_left = [G2_edge_amt for i in range(G1_edge_amt)]
+    ## used to maintain "arcsleft" instead of iterating through a row in MARCS every time a value is adjusted.
+    MARCS_row_ones = [H_edge_amt for i in range(G_edge_amt)]
 
-    ## G2_mapped[i] = 1 if node "i" in G2 has already been assigned a vertex from G1
-    G2_mapped = [False for i in range(G2_node_amt)]
-    ## G2_tried[i][j] = 1 if node "j" in G2 has been tried for node "i" in G1
-    G2_tried = np.zeros((G1_node_amt, G2_node_amt), dtype=bool)
+    ## H_mapped[i] = 1 if node "i" in H has already been assigned a vertex from G
+    ## In place to ensure that a node in G in a branch isn't mapped
+    ## to a node in H already occupied by a previous node in G
+    H_mapped = [False for i in range(H_node_amt)]
+    ## H_tried[i][j] = 1 if node "j" in H has been tried for node "i" in G
+    ## In place to ensure that a node in G doesn't try to map to the same node
+    ## multiple times.
+    H_tried = np.zeros((G_node_amt, H_node_amt), dtype=bool)
 
-    workspaces = [0 for i in range(G1_node_amt)]
+    ## Array to save workspaces containing MARCS, arcsleft, MARCS_row_ones , and killed_edges
+    workspaces = [0 for i in range(G_node_amt)]
 
+    ## The current G -> H function as well as a list of all mappings, MARCSs and arcs_left
     current_mapping = {}
-    for node_index in range(G1_node_amt):
+    best_mapping = [""]
+    for node_index in range(G_node_amt):
         current_mapping[node_index] = ""
 
+    ## Contains (i, j) pairs when edges (i, j) were recently unable to correspond to each other
+    killed_edges = []
+    ## Number of total mappings found
     counter = 0
     bestarcsleft = 0
-    arcsleft = G1_edge_amt
-    v_i = 0
-    x_i = None 
-    while v_i >= 0: 
+    arcsleft = G_edge_amt
 
-        # if v_i == 3:
-        #     print("Current Mapping:", current_mapping)
-        #     print("ARCS LEFT:", arcsleft, "\t BEST ARCS LEFT", bestarcsleft)
-        #     print("MARCS:")
-        #     print(MARCS)
-        #     print()
+    ## v in G, x in H
+    v = 0
+    x = None 
+    ##                                              ALGORITHM BEGINS HERE
+    while v >= 0: 
             
-        x_i = None
-        for index in range(G2_node_amt):
-            if not G2_tried[v_i][index] and not G2_mapped[index]:
-                # Map v_i to x_i
-                x_i = index
-                if current_mapping[v_i] != "":
-                    G2_mapped[ current_mapping[ v_i ] ] = False
-                
-                ## Reset MARCS rows for v_i
-                v_i_edges = G1_node_to_arc[v_i]
-                for v_i_edge_index in range(G1_edge_amt):
-                    if v_i_edges[v_i_edge_index] == 1:
-                        if MARCS_row_ones_left[v_i_edge_index] == 0:
-                            arcsleft += 1
-                        MARCS[v_i_edge_index] = [1 for i in range(G2_edge_amt)]
-                        MARCS_row_ones_left[v_i_edge_index] = G2_edge_amt
+        x = None
+        ## Finding a node x in H that has not already been mapped to.  
+        ## Additionally, that node x in H has not been tried yet by node v in G
+        for H_node in range(H_node_amt):
+            if not H_tried[v][H_node] and not H_mapped[H_node]:
+                x = H_node
+                ## If v is currently mapped to a different node
+                ## update said node to no longer be mapped.
+                if current_mapping[v] != "":
+                    H_mapped[ current_mapping[ v ] ] = False
 
-                current_mapping[v_i] = x_i
+                ## Upon mapping to a different node in H, the edges killed as a result
+                ## of the previous mapping must now be restored
+                for (G_edge, H_edge) in killed_edges:
+                    if MARCS[G_edge][H_edge] == 0:
+                        MARCS[G_edge][H_edge] = 1
+                        if MARCS_row_ones[G_edge] == 0:
+                                    arcsleft += 1  
+                        MARCS_row_ones[G_edge] += 1
+
+                current_mapping[v] = x
                 break
         ## If a vertex is found
-        if x_i is not None:
-            G2_tried[v_i][x_i] = True
-            G2_mapped[x_i] = True
-
-            ## UPDATE MARCS
-            v_i_edges = G1_node_to_arc[v_i]
-            x_i_edges = G2_node_to_arc[x_i]
-            for v_i_edge_index in range(G1_edge_amt):
-                ## v_i is incident to this arc
-                if v_i_edges[v_i_edge_index] == 1:
-                    for x_i_edge_index in range(G2_edge_amt):
-                        ## For all edges not incident with x_i, v_i arcs cannot be mapped
-                        if x_i_edges[x_i_edge_index] == 0:
-                            if MARCS[v_i_edge_index][x_i_edge_index] != 0:
-                                MARCS[v_i_edge_index][x_i_edge_index] = 0
-                                MARCS_row_ones_left[v_i_edge_index] -= 1
-                                if MARCS_row_ones_left[v_i_edge_index] == 0:
-                                    arcsleft -= 1                            
+        if x is not None:
+            H_tried[v][x] = True
+            H_mapped[x] = True
             
-            if arcsleft >= bestarcsleft:
-                if v_i == G1_node_amt - 1:
-                    print("CURRENT MAPPING:")
-                    print(current_mapping)
-
-                    print("MARCS:")
-                    print(MARCS)
+            ## UPDATE MARCS
+            killed_edges = []
+            v_edges = G_node_to_arc[v]
+            x_edges = H_node_to_arc[x]
+            for G_edge in range(G_edge_amt):
+                ## v is incident to this arc.
+                if v_edges[G_edge] == 1:
+                    for H_edge in range(H_edge_amt):
+                        ## For all edges not incident with x, v edge cannot be mapped.
+                        if x_edges[H_edge] == 0:
+                            if MARCS[G_edge][H_edge] != 0:
+                                MARCS[G_edge][H_edge] = 0
+                                ## Take note of lacking edge correspondence for future restoration.
+                                killed_edges.append((G_edge, H_edge)) 
+                                MARCS_row_ones[G_edge] -= 1
+                                if MARCS_row_ones[G_edge] == 0:
+                                    arcsleft -= 1                            
+            ## 
+            if arcsleft > bestarcsleft:
+                if v == G_node_amt - 1:
+                    best_mapping[0] = (deepcopy(current_mapping), deepcopy(MARCS), arcsleft)
                     counter += 1
                     
                     bestarcsleft = arcsleft
                 else:
-                    ## store copy
-                    workspaces[v_i] = Workspace(MARCS, arcsleft, MARCS_row_ones_left)
-                    v_i += 1
-                    G2_tried[v_i] = [False for i in range(G2_node_amt)]
+                    ## Store values in workspace associated with node v
+                    workspaces[v] = Workspace(MARCS, arcsleft, MARCS_row_ones, killed_edges)
+                    v += 1
+                    ## New branch made, no edges killed and no nodes in H
+                    ## have been tried in this branch.
+                    killed_edges = []
+                    H_tried[v] = [False for i in range(H_node_amt)]
 
+        ## No node in H was found - backtracking is the only option.
         else:
-            ## When backtracking after a mapping has occurred between v_i and x_i, undo the "map" status of x_i
-            if current_mapping[v_i] != "":
-                G2_mapped[ current_mapping[ v_i ] ] = False
-                current_mapping[v_i] = ""
-            v_i -= 1
-            if v_i < 0:
-                print("Counter:\t", counter)
-                return
-            MARCS, arcsleft, MARCS_row_ones_left = workspaces[v_i].MARCS, workspaces[v_i].arcsleft, workspaces[v_i].MARCS_ones_left
+            ## When backtracking, ignore the mapping of v in G to x in H.
+            if current_mapping[v] != "":
+                H_mapped[ current_mapping[ v ] ] = False
+                current_mapping[v] = ""
+            v -= 1
 
-def node_to_arc_matrix(G):
-    V_size = len(G.nodes)
-    A_size = len(G.edges)
-    
-    node_arc_matrix = np.zeros((V_size, A_size))
-    edges = list(G.edges)
-
-    ## Node pair (u, v) are both incident to the arc denoted by "Index"
-    for index in range(len(G.edges)):
-        (u, v) = edges[index]
-        node_arc_matrix[u][index] = 1
-        node_arc_matrix[v][index] = 1
-    
-    return node_arc_matrix
-
-
+            if v < 0:
+                (return_mapping, return_marcs, return_arcsleft) = best_mapping[0]
+                return return_mapping, return_marcs, return_arcsleft
+            ## Restore the saved workspace
+            MARCS = workspaces[v].get_MARCS()
+            arcsleft = workspaces[v].get_arcsleft()
+            MARCS_row_ones = workspaces[v].get_MARCS_ones_left()
+            killed_edges = workspaces[v].get_edges_killed()
 
 if __name__ == "__main__":
 
+    G = nx.Graph()
+    G.add_edges_from([(0,1), (1,2), (2,0), (2,3)])
+    H = nx.graph_atlas_g()[100]
+    # H = nx.Graph()
+    # H.add_edges_from([(0,3), (3,2), (2,1), (1,3)])
 
-    # G = nx.Graph()
-    # H = nx.complete_graph(5)
+    mapping, marcs, arcsleft = mcs_mcgregor(G, H)
+    print(mapping)
 
-    # G.add_nodes_from([i for i in range(10)])
 
-    # a = [i for i in range(9, -1, -1)]
-    # b = [i for i in range(0, 10)]
-    # tuples = list(zip(a,b))
-    # G.add_edges_from(tuples)
-    # G.add_edges_from([(1,2), (3,4)])
-
-    # G = nx.Graph()
-    # G.add_edges_from([(0,1), (1,2), (2,3), (3,0)])
-    # H = nx.complete_graph(3)
-
-    H = nx.Graph()
-    H.add_edges_from([(0,1), (1,2), (2,3), (3,0)])
-    G = nx.complete_graph(5)
-
-    # DRAWING
+    # # DRAWING
     subax1 = plt.subplot(121)
-    nx.draw(G)
+    nx.draw(G, pos=nx.spring_layout(G), with_labels=True)
     subax2 = plt.subplot(122)
-    nx.draw(H, node_color='r')
+    nx.draw(H, node_color='r', with_labels=True)
+
+    print("G EDGES: ", G.edges)
+    print("H EDGES:", H.edges)
 
     plt.show()
-
-    print("H EDGES:\t", H.edges)
-    print("G EDGES:\t", G.edges)
-    mcs_mcgregor(H, G)
 
 
