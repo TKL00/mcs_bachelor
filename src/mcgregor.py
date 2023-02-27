@@ -505,6 +505,5 @@ if __name__ == "__main__":
     print(result)
 
     ## DRAWING
-    # pretty_printer_graphs(LG,LH, mapping, marcs, anchor=line_node_anchor)
     for values in result:
         pretty_printer_line_graphs(G, H, LG, LH, values[0], values[1])
