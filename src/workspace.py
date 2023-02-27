@@ -11,7 +11,7 @@ class Workspace:
 
     `MARCS_ones_left`: An array of length (rows_in_MARCS) where MARCS_ones_left[i] denotes the number of 1s left in row `i`
 
-    `edges_killed`: An array of integer tuples (r, s) such that all tuples correspond to 'killed' edges that lead
+    `edges_killed`: An array of integer tuples (r, s) such that all tuples correspond to 'killed' edges that led
     to the current state of MARCS.
     """
 
