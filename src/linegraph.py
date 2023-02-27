@@ -1,7 +1,7 @@
 import networkx as nx
 import matplotlib.pyplot as plt
 
-### Authors: Tobias Klink Lehn (toleh20@student.sdu.dk) and Kasper Halkjær Beider (kbeid20@st
+### Authors: Tobias Klink Lehn (toleh20@student.sdu.dk) and Kasper Halkjær Beider (kbeid20@student.sdu.dk)
 def line_graph(G):
     """
     Creates the Line Graph representation, L(G) of G.    
@@ -28,6 +28,9 @@ def line_graph(G):
 
     G_edges = list(G.edges)
 
+    for i in range(len(G_edges)):
+        LG.add_node(i)
+
     ## O(n^2)
     for i in range(len(G_edges)):
         for j in range(i + 1,len(G_edges)):
@@ -35,6 +38,27 @@ def line_graph(G):
                 LG.add_edge(i, j)
 
     return LG
+
+def convert_edge_anchor(G, H, edge_anchor):
+    """
+    Assumes edge_anchor is from G_edge -> H_edge
+    """
+
+    node_map = {}
+
+    G_edges = list(G.edges)
+    H_edges = list(H.edges)
+
+    for keys in edge_anchor:
+        G_edge = keys
+        H_edge = edge_anchor[keys]
+
+        LG_node = G_edges.index(G_edge)
+        LH_node = H_edges.index(H_edge)
+
+        node_map[LG_node] = LH_node
+
+    return node_map
 
 
 # if __name__ == "__main__":
