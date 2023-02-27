@@ -1,5 +1,4 @@
 import networkx as nx
-import matplotlib.pyplot as plt
 
 ### Authors: Tobias Klink Lehn (toleh20@student.sdu.dk) and Kasper Halkjær Beider (kbeid20@student.sdu.dk)
 def line_graph(G):
@@ -59,24 +58,5 @@ def convert_edge_anchor(G, H, edge_anchor):
         node_map[LG_node] = LH_node
 
     return node_map
-
-
-# if __name__ == "__main__":
-
-    
-#     G = nx.Graph()
-#     G.add_edges_from([(0,1), (1,2), (1,3), (1,7), (2,3), (3,4), (3,6), (4,5), (6,7), (7, 8)])
-#     G_pos = nx.spring_layout(G, seed=1010203)
-
-#     LG = line_graph(G)
-#     LG_pos = nx.spring_layout(LG, seed=1010203)
-
-#     subax1 = plt.subplot(121)
-#     nx.draw(G, G_pos, with_labels=True)
-
-#     subax2 = plt.subplot(122)
-#     nx.draw(LG, LG_pos, with_labels=True)
-
-#     plt.show()
 
     
