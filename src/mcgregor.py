@@ -22,9 +22,10 @@ def mcs_mcgregor(G, H, anchor_point={}):
             anchor_point (dict: int -> int): A valid one-to-one mapping from 'n' nodes in G to 'n' nodes in H
         
         `Returns`:
-            mapping (dict: int -> int): The node correspondence for the MCS
-            marcs (np.array): The MARCS array for the MCS
-            arcsleft (int): The number of arcs in G that can be mapped to arcs in H
+            all_mappings (list: (mapping, marcs, arcsleft)) where arcsleft is maximum:
+                mapping (dict: int -> int): The node correspondence for the MCS
+                marcs (np.array): The MARCS array for the MCS
+                arcsleft (int): The number of arcs in G that can be mapped to arcs in H
 
     If an anchor point is given (i.e. a subgraph isomorphism between G and H),
     the algorithm produces a common subgraph branching out from this anchor point.
@@ -125,7 +126,7 @@ def mcs_mcgregor(G, H, anchor_point={}):
 
     ## The current G -> H function, MARCSs and arcs_left
     current_mapping = {}
-    best_mapping = [""]
+    all_mappings = []
     for node_index in range(G_node_amt):
         current_mapping[node_index] = ""
 
@@ -205,9 +206,9 @@ def mcs_mcgregor(G, H, anchor_point={}):
 
             ## If the number of edges to be mapped is 'high', we either build further down the branch
             ## or save the current mapping if in a leaf node.
-            if arcsleft > bestarcsleft:
+            if arcsleft >= bestarcsleft:        ## == comes from building all MCS, even ones where arcsleft are equal
                 if v == G_node_amt - 1:
-                    best_mapping[0] = (deepcopy(current_mapping), deepcopy(MARCS), arcsleft)
+                    all_mappings.append((deepcopy(current_mapping), deepcopy(MARCS), arcsleft))
                     counter += 1
                     bestarcsleft = arcsleft
                 else:
@@ -221,7 +222,7 @@ def mcs_mcgregor(G, H, anchor_point={}):
                     ## Skipping ahead resulted in jumping "out" of G, so we must backtrack to most
                     ## recent non-anchored node and save this mapping.
                     if v == G_node_amt:
-                        best_mapping[0] = (deepcopy(current_mapping), deepcopy(MARCS), arcsleft)
+                        all_mappings.append((deepcopy(current_mapping), deepcopy(MARCS), arcsleft))
                         counter += 1
                         bestarcsleft = arcsleft
                         v = non_anchored_node
@@ -247,8 +248,9 @@ def mcs_mcgregor(G, H, anchor_point={}):
             ## If the algorithm has backtracked past the first non anchor point it means
             ## there are only anchor points left, therefore the algorithm stops.
             if v < first_non_anchor:
-                (return_mapping, return_marcs, return_arcsleft) = best_mapping[0]
-                return return_mapping, return_marcs, return_arcsleft
+                max_arcsleft = max(all_mappings, key=lambda items:items[2])[2]
+                all_mappings_filtered = list(filter(lambda x: x[2] == max_arcsleft, all_mappings))
+                return all_mappings_filtered
             ## Restore the saved workspace
             MARCS = workspaces[v].get_MARCS()
             arcsleft = workspaces[v].get_arcsleft()
@@ -499,9 +501,10 @@ if __name__ == "__main__":
     LG = lg(G)
     LH = lg(H)
 
-    mapping, marcs, arcsleft = mcs_mcgregor(LG,LH, line_node_anchor)
-    pretty_printer_mapping(mapping)
+    result = mcs_mcgregor(LG,LH)
+    print(result)
 
     ## DRAWING
     # pretty_printer_graphs(LG,LH, mapping, marcs, anchor=line_node_anchor)
-    pretty_printer_line_graphs(G, H, LG, LH, mapping, marcs, edge_anchor=edge_anchor, line_node_anchor=line_node_anchor)
+    for values in result:
+        pretty_printer_line_graphs(G, H, LG, LH, values[0], values[1])
