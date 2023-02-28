@@ -80,11 +80,11 @@ def mcs_mcgregor(G, H, anchor_point={}):
             That is, if h_node has an edge between itself and a node in the current subgraph of H but this edge doesn't exist between
             g_node and that corresponding node in the subgraph G, g_node cannot be mapped to h_node.
         """
-        g_neighbours = G.adj[g_node] ## 2
-        h_neighbours = H.adj[h_node] ## 2
+        g_neighbours = G.adj[g_node]
+        h_neighbours = H.adj[h_node] 
 
         h_allowed_neighbours = []
-        for neighbour in g_neighbours: # 3, 1, 0
+        for neighbour in g_neighbours:
             ## only account for nodes in G that have been mapped to nodes in H
             if mapping[neighbour] != "":
                 h_allowed_neighbours.append(mapping[neighbour])
@@ -92,6 +92,7 @@ def mcs_mcgregor(G, H, anchor_point={}):
         for neighbour in h_neighbours:
             ## If the h_node's neighbour is a part of the current MCS in H
             ## but this neighbour does not exist in G, a contradiction has been found.
+            ## The current node in H that the node in G is mapped to is ignored.
             if mapping[g_node] != neighbour and neighbour in mapping.values() and neighbour not in h_allowed_neighbours:
                 return False
         
