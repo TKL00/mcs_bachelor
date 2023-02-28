@@ -5,7 +5,7 @@ from copy import deepcopy
 from workspace import Workspace
 from linegraph import line_graph as lg
 from linegraph import convert_edge_anchor
-from draw_graphs import draw_mcgregor_mcs_lgs
+from draw_graphs import draw_mcgregor_mcs_lgs, draw_two_graphs
 
 ### Authors: Tobias Klink Lehn (toleh20@student.sdu.dk) and Kasper Halkjær Beider (kbeid20@student.sdu.dk)
 def mcs_mcgregor(G, H, anchor_point={}):
@@ -80,11 +80,11 @@ def mcs_mcgregor(G, H, anchor_point={}):
             That is, if h_node has an edge between itself and a node in the current subgraph of H but this edge doesn't exist between
             g_node and that corresponding node in the subgraph G, g_node cannot be mapped to h_node.
         """
-        g_neighbours = G.adj[g_node]
-        h_neighbours = H.adj[h_node]
+        g_neighbours = G.adj[g_node] ## 2
+        h_neighbours = H.adj[h_node] ## 2
 
         h_allowed_neighbours = []
-        for neighbour in g_neighbours:
+        for neighbour in g_neighbours: # 3, 1, 0
             ## only account for nodes in G that have been mapped to nodes in H
             if mapping[neighbour] != "":
                 h_allowed_neighbours.append(mapping[neighbour])
@@ -92,7 +92,7 @@ def mcs_mcgregor(G, H, anchor_point={}):
         for neighbour in h_neighbours:
             ## If the h_node's neighbour is a part of the current MCS in H
             ## but this neighbour does not exist in G, a contradiction has been found.
-            if neighbour in mapping.values() and neighbour not in h_allowed_neighbours:
+            if mapping[g_node] != neighbour and neighbour in mapping.values() and neighbour not in h_allowed_neighbours:
                 return False
         
         return True 
@@ -172,6 +172,7 @@ def mcs_mcgregor(G, H, anchor_point={}):
     #####################################################################################################################
     while v >= 0: 
         x = None
+
         ## Finding a node x in H that has not already been mapped to.  
         ## Additionally, that node x in H has not been tried yet by node v in G
         for H_node in range(H_node_amt):
@@ -279,8 +280,9 @@ if __name__ == "__main__":
     LH = lg(H)
 
     result = mcs_mcgregor(LG,LH, line_node_anchor)
-    print(result)
 
-    ## DRAWING
+    # DRAWING
     for values in result:
         draw_mcgregor_mcs_lgs(G, H, LG, LH, values[0], values[1], edge_anchor)
+
+    # draw_two_graphs(LG, LH)
