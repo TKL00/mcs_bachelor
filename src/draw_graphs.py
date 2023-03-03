@@ -1,6 +1,6 @@
 import networkx as nx
 import matplotlib.pyplot as plt
-from linegraph import convert_edge_anchor
+from linegraph import convert_edge_anchor_lg
 
 ### Authors: Tobias Klink Lehn (toleh20@student.sdu.dk) and Kasper Halkjær Beider (kbeid20@student.sdu.dk)
 def draw_product_graph(G, H, PGH):
@@ -212,7 +212,7 @@ def draw_mcgregor_mcs_lgs(G, H, LG, LH, mapping, marcs, edge_anchor={}):
     """
 
     label_string="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    line_node_anchor = convert_edge_anchor(G, H, edge_anchor)
+    line_node_anchor = convert_edge_anchor_lg(G, H, edge_anchor)
     G_edge_labels, H_edge_labels, G_node_labels, H_node_labels, LG_node_labels, LH_node_labels = {}, {}, {}, {}, {}, {}
 
     G_edges = list(G.edges)

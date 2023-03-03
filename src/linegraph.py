@@ -38,9 +38,17 @@ def line_graph(G):
 
     return LG
 
-def convert_edge_anchor(G, H, edge_anchor):
+def convert_edge_anchor_lg(G, H, edge_anchor):
     """
-    Assumes edge_anchor is from G_edge -> H_edge
+    Assumes edge_anchor is from G_edge -> H_edge.
+
+    Computes the node_anchor in line graphs of G and H by the given edge_anchor.
+
+    ``Parameters``:
+
+    ``Returns``:
+        node_map ( dict: int -> int ): The mapping from node i to node j in the linegraph which corresponds to 
+                                       edge i and edge j in the original graphs.
     """
 
     node_map = {}
@@ -59,4 +67,23 @@ def convert_edge_anchor(G, H, edge_anchor):
 
     return node_map
 
-    
+def convert_edge_anchor(G, H, edge_anchor):
+    """
+        Converts a given edge_anchor from G -> H into a node_anchor.
+        That is, if edge_anchor has an entry (i, j) -> (a, b) it entails the mapping {i: a, j: b}.
+        As a result, it is a precondition that the edge indices are sorted lexicographically to keep the
+        integrity of the node-mapping intact when several edges share the same node.
+
+        
+        ( e.x. (1, 3) -> (a, c) entails {1: a, 3: c} but having (1, 2) -> (b, a) later results in the final mapping {1: b, 2: a, 3: c}
+        when one wanted {1: a, 2: b, 3: c} )
+    """
+
+    node_anchor = {}
+    for g_edges in edge_anchor:
+        mapped_edge = edge_anchor[g_edges]
+
+        node_anchor[g_edges[0]] = mapped_edge[0]
+        node_anchor[g_edges[1]] = mapped_edge[1]
+
+    return node_anchor

@@ -1,6 +1,6 @@
 from productgraph import product_graph as pg
 from linegraph import line_graph as lg
-from linegraph import convert_edge_anchor
+from linegraph import convert_edge_anchor_lg
 import networkx as nx
 from draw_graphs import draw_product_graph
 from draw_graphs import draw_two_graphs
@@ -35,7 +35,7 @@ def mcs_leviBarrowBurstall(G, H, node_anchor={}, edge_anchor={}):
         LH = lg(H)
 
         ## Mapping: v in LG -> u in LH
-        computed_node_anchor = convert_edge_anchor(G, H, edge_anchor)
+        computed_node_anchor = convert_edge_anchor_lg(G, H, edge_anchor)
         
         ## Compute product graph.
         mod_product_graph = pg(LG, LH)
