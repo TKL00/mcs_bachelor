@@ -3,6 +3,9 @@ import matplotlib.pyplot as plt
 from linegraph import convert_edge_anchor_lg
 
 ### Authors: Tobias Klink Lehn (toleh20@student.sdu.dk) and Kasper Halkjær Beider (kbeid20@student.sdu.dk)
+
+GLOBAL_SEED = 1010203
+
 def draw_product_graph(G, H, PGH):
     """
         Draws two NetworkX graphs next to each other, along with their
@@ -10,21 +13,21 @@ def draw_product_graph(G, H, PGH):
     """
     G_pos = nx.spring_layout(G, seed=101)
     H_pos = nx.spring_layout(H, seed=101)
+
     PGH_pos = nx.spring_layout(PGH, seed=101)
     G_node_labels = {}
     H_node_labels = {}
     PGH_node_labels = {}
 
-    PGH_nodes = list(PGH.nodes)
 
-    for i in range(len(G.nodes)):
-        G_node_labels[i] = i
+    for nodes in G.nodes:
+        G_node_labels[nodes] = nodes
 
-    for i in range(len(H.nodes)):
-        H_node_labels[i] = i
+    for nodes in H.nodes:
+        H_node_labels[nodes] = nodes
     
-    for i in range(len(PGH.nodes)):
-        PGH_node_labels[PGH_nodes[i]] = PGH_nodes[i]
+    for nodes in PGH.nodes:
+        PGH_node_labels[nodes] = nodes
 
     subax1 = plt.subplot(221)
     subax1.set_title("G")
@@ -48,7 +51,7 @@ def draw_product_graph(G, H, PGH):
 
     plt.show()
 
-def draw_two_graphs(G, H):
+def draw_two_graphs(G, H, mapped_edges={}):
     """
         Draws two NetworkX graphs next to each other.
     """
@@ -56,25 +59,40 @@ def draw_two_graphs(G, H):
     H_pos = nx.spring_layout(H, seed=101)
     G_node_labels = {}
     H_node_labels = {}
+    G_edge_labels = {}
+    H_edge_labels = {}
 
-    for i in range(len(G.nodes)):
-        G_node_labels[i] = i
+    ## String used for edges mapped to each other
+    label_string="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
-    for i in range(len(H.nodes)):
-        H_node_labels[i] = i
+    for nodes in G.nodes:
+        G_node_labels[nodes] = nodes
 
+    for nodes in H.nodes:
+        H_node_labels[nodes] = nodes
+
+    if mapped_edges:
+        iterator = 0
+        for G_edge in mapped_edges:
+            G_edge_labels[G_edge] = label_string[iterator]
+            H_edge_labels[mapped_edges[G_edge]] = label_string[iterator]
+            iterator += 1
 
     subax1 = plt.subplot(121)
     subax1.set_title("G")
     nx.draw_networkx_nodes(G, G_pos, nodelist=G.nodes)
     nx.draw_networkx_labels(G, G_pos, G_node_labels, font_size=15, font_color="whitesmoke")
     nx.draw_networkx_edges(G, G_pos, edgelist=G.edges)
+    if mapped_edges:
+        nx.draw_networkx_edge_labels(G, G_pos, G_edge_labels, font_color="tab:red")
     
     subax2 = plt.subplot(122)
     subax2.set_title("H")
     nx.draw_networkx_nodes(H, H_pos, nodelist=H.nodes)
     nx.draw_networkx_labels(H, H_pos, H_node_labels, font_size=15, font_color="whitesmoke")
     nx.draw_networkx_edges(H, H_pos, edgelist=H.edges)
+    if mapped_edges:
+        nx.draw_networkx_edge_labels(H, H_pos, H_edge_labels, font_color="tab:red")
     
     plt.show()
     
@@ -97,14 +115,6 @@ def draw_mcgregor_mcs_graphs(G, H, mapping, marcs, anchor={}):
     
     ## String used for nodes mapped to each other
     label_string="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    G_labels = {}
-    H_labels = {}
-
-    ## Assigning different labels for the nodes in the mapping
-    ## a mapping u -> v from G to H assigns the same string to u and v 
-    for g_nodes in mapping:
-        G_labels[g_nodes] = label_string[g_nodes]
-        H_labels[mapping[g_nodes]] = label_string[g_nodes]
 
     G_pos = nx.spring_layout(G, seed=101)
     H_pos = nx.spring_layout(H, seed=101)
@@ -121,11 +131,6 @@ def draw_mcgregor_mcs_graphs(G, H, mapping, marcs, anchor={}):
     ## Color anchor point in G
     for g_nodes in anchor:
         G_node_colors[g_nodes] = 'tab:orange'
-
-    ## G DRAWING
-    subax1 = plt.subplot(121)
-    nx.draw_networkx_nodes(G, G_pos, nodelist=sorted(G.nodes), node_color=G_node_colors, **options)
-    nx.draw_networkx_edges(G, G_pos, width=1.0, alpha=0.5)
     
     ## Determine which edges exist in the mapping and color those.
     G_edges = list(G.edges)
@@ -137,15 +142,6 @@ def draw_mcgregor_mcs_graphs(G, H, mapping, marcs, anchor={}):
             if marcs[i][j] == 1:
                 G_color_edges.append(G_edges[i])
                 H_color_edges.append(H_edges[j])
-
-    nx.draw_networkx_edges(
-        G,
-        G_pos,
-        edgelist=G_color_edges,
-        width=8,
-        alpha=0.5,
-        edge_color="tab:blue",
-    )
 
     ## Add labels to mapped nodes from G to H
     ## such that the mapped nodes have the same label
@@ -159,7 +155,7 @@ def draw_mcgregor_mcs_graphs(G, H, mapping, marcs, anchor={}):
             ## mapped nodes in H will have the same color as the nodes in G
             H_node_colors[mapping[nodes]] = "tab:blue"
             iterator += 1
-        ## otherwise, G nodes will be numbered from 0-n
+        ## otherwise, the nodes in G will have the label according to itself (0 - n in principel)
         else:
             G_node_labels[nodes] = nodes
     ## same labeling in H with non-mapped nodes having numbers from 0-n if not already mapped.
@@ -171,11 +167,24 @@ def draw_mcgregor_mcs_graphs(G, H, mapping, marcs, anchor={}):
     for g_node in anchor:
         H_node_colors[anchor[g_node]] = "tab:orange"
 
+    ## G DRAWING
+    subax1 = plt.subplot(121)
+    nx.draw_networkx_nodes(G, G_pos, nodelist=sorted(G.nodes), node_color=G_node_colors, **options)
+    nx.draw_networkx_edges(G, G_pos, width=1.0, alpha=0.5)
+    nx.draw_networkx_edges(
+        G,
+        G_pos,
+        edgelist=G_color_edges,
+        width=8,
+        alpha=0.5,
+        edge_color="tab:blue",
+    )
     nx.draw_networkx_labels(G, G_pos, G_node_labels, font_size=15, font_color="whitesmoke")
 
 
     ## H DRAWING
     subax2 = plt.subplot(122)
+    subax2.set_title("H")
     nx.draw_networkx_nodes(H, nodelist=sorted(H.nodes), node_color=H_node_colors, pos=H_pos)
     nx.draw_networkx_edges(H, H_pos, width=1.0, alpha=0.5)
     nx.draw_networkx_edges(
@@ -220,10 +229,10 @@ def draw_mcgregor_mcs_lgs(G, H, LG, LH, mapping, marcs, edge_anchor={}):
     LG_edges = list(LG.edges)
     LH_edges = list(LH.edges)
 
-    G_pos = nx.spring_layout(G, seed=1010203)
-    H_pos = nx.spring_layout(H, seed=1010203)
-    LG_pos = nx.spring_layout(LG, seed=1010203)
-    LH_pos = nx.spring_layout(LH, seed=1010203)
+    G_pos = nx.spring_layout(G, seed=GLOBAL_SEED)
+    H_pos = nx.spring_layout(H, seed=GLOBAL_SEED)
+    LG_pos = nx.spring_layout(LG, seed=GLOBAL_SEED)
+    LH_pos = nx.spring_layout(LH, seed=GLOBAL_SEED)
 
     ## Node colours
     H_node_colors = ["tab:pink" for i in range(len(H.nodes))]
