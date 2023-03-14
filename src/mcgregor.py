@@ -4,8 +4,8 @@ import numpy as np
 from copy import deepcopy
 from workspace import Workspace
 from linegraph import line_graph as lg
-from linegraph import convert_edge_anchor
-from draw_graphs import draw_mcgregor_mcs_lgs, draw_two_graphs
+from linegraph import convert_edge_anchor_lg, convert_edge_anchor
+from draw_graphs import draw_mcgregor_mcs_lgs, draw_two_graphs, draw_mcgregor_mcs_graphs
 
 ### Authors: Tobias Klink Lehn (toleh20@student.sdu.dk) and Kasper Halkjær Beider (kbeid20@student.sdu.dk)
 def mcs_mcgregor(G, H, anchor_point={}):
@@ -260,6 +260,22 @@ def mcs_mcgregor(G, H, anchor_point={}):
             MARCS_row_ones = workspaces[v].get_MARCS_ones_left()
             killed_edges = workspaces[v].get_edges_killed()
 
+
+def construct_cs(G, marcs):
+    """
+        Constructs the subgraph denoted by the mapped edges in G from MARCS.
+    """
+    subgraph = nx.Graph()
+    G_edges = list(G.edges)
+
+    for row in range(len(marcs)):
+        for column in range(len(marcs[0])):
+            if marcs[row][column] == 1:
+                print(G_edges[row])
+                subgraph.add_edge(G_edges[row][0], G_edges[row][1])
+
+    return subgraph
+
 if __name__ == "__main__":
 
     G = nx.Graph()
@@ -267,23 +283,25 @@ if __name__ == "__main__":
 
     H = nx.Graph()
     H.add_edges_from([(0,1), (1,2), (1,3), (1,7), (2,3), (3,4), (3,6), (6, 7), (7, 8), (4,5)])
-    print("G EDGES: ", G.edges)
-    print("H EDGES:", H.edges)
 
     edge_anchor = {
-                    (3, 4): (7, 8),
-                    (2, 3): (1, 7)
+                    (0, 1): (2, 1)
                     }
-    
-    line_node_anchor = convert_edge_anchor(G, H, edge_anchor)
 
-    LG = lg(G)
-    LH = lg(H)
-
-    result = mcs_mcgregor(LG,LH, line_node_anchor)
+    node_anchor = convert_edge_anchor(G, H, edge_anchor)
+    result = mcs_mcgregor(G, H)
 
     # DRAWING
-    for values in result:
-        draw_mcgregor_mcs_lgs(G, H, LG, LH, values[0], values[1], edge_anchor)
+    # show_result = result[0]
 
-    # draw_two_graphs(LG, LH)
+    # print("G nodes:", G.nodes)
+    # print("H nodes", H.nodes)
+    # print(show_result[0])
+    # draw_mcgregor_mcs_graphs(G, H, show_result[0], show_result[1])
+    # subgraph = construct_cs(G, show_result[1])
+
+    for results in result:
+        draw_mcgregor_mcs_graphs(G, H, results[0], results[1])
+
+    # draw_two_graphs(G, H)
+    # draw_two_graphs(G, subgraph)
