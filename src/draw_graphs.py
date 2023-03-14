@@ -1,6 +1,7 @@
 import networkx as nx
 import matplotlib.pyplot as plt
 from linegraph import convert_edge_anchor_lg
+import copy
 
 ### Authors: Tobias Klink Lehn (toleh20@student.sdu.dk) and Kasper Halkjær Beider (kbeid20@student.sdu.dk)
 
@@ -96,6 +97,44 @@ def draw_two_graphs(G, H, mapped_edges={}):
     
     plt.show()
     
+def draw_blue_connected_components(PG, anchor, blue_components, color_map):
+
+    PG_pos = nx.spring_layout(PG, seed=101)
+
+    nodes_to_draw = copy.deepcopy(anchor)
+    for component in blue_components:
+        nodes_to_draw.extend(component)
+
+    blue_component_graphs = []
+    for component in blue_components:
+        nodes_to_add = copy.deepcopy(component)
+        nodes_to_add.extend(anchor)
+        subgraph = nx.Graph(nx.induced_subgraph(PG, nodes_to_add))
+        blue_component_graphs.append(subgraph)
+
+    anchor_labels = {point: point for point in anchor}
+    component_labels = {point: point for point in blue_components[0]}
+    subax1 = plt.subplot(111)
+
+    ## draw each subgraph individually
+    for blue_subgraphs in blue_component_graphs:
+
+        nx.draw_networkx_nodes(blue_subgraphs, PG_pos, blue_subgraphs.nodes, node_color="tab:blue", node_size=400)
+        nx.draw_networkx_labels(blue_subgraphs, PG_pos, component_labels, font_size=8)
+        nx.draw_networkx_edges(blue_subgraphs, PG_pos, nodelist=blue_subgraphs.nodes, width=0.5, alpha=0.1)
+        
+        for edge in blue_subgraphs.edges:
+            (u, v) = edge
+            color = color_map[(u, v)] if u < v else color_map[(v, u)]
+            nx.draw_networkx_edges(blue_subgraphs, PG_pos, edgelist=[edge], width=0.5, alpha=0.5, edge_color=color)
+
+    ## draw the anchor lastly
+    nx.draw_networkx_nodes(PG, PG_pos, anchor, node_color="tab:orange", node_size=400)
+    nx.draw_networkx_labels(PG, PG_pos, anchor_labels, font_size=8)
+
+    plt.show()
+
+    return None
 
 def draw_mcgregor_mcs_graphs(G, H, mapping, marcs, anchor={}):
     """
