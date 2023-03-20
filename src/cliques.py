@@ -1,5 +1,5 @@
-from productgraph import product_graph as pg
-from productgraph import product_graph_list as pgl
+from productgraph import product_graph_no_limit as pgnl
+from productgraph import product_graph_limit as pgl
 from linegraph import line_graph as lg
 from linegraph import convert_edge_anchor_lg
 from linegraph import convert_edge_anchor_lg_list
@@ -200,7 +200,7 @@ def mcs_leviBarrowBurstall(G, H, node_anchor={}, edge_anchor={}):
     ## NOTE: Ask for "permission" to clean this up such that we only focus on edge-anchored version.
     ## No use of line graphs
     else:
-        mod_product_graph = pg(G, H)
+        mod_product_graph = pgnl(G, H)
 
         anchor_points = [ (g, node_anchor[g]) for g in node_anchor]
 
@@ -375,7 +375,7 @@ def mcs_list_leviBarrowBurstall(L, edge_anchor, limit_pg=True):
     computed_node_anchor = convert_edge_anchor_lg_list(L, edge_anchor)
     
     ## Compute product graph, either constraining it to only include A and N, or include all possible nodes.
-    mod_product_graph = pgl(linegraphs, computed_node_anchor) if limit_pg else pg(linegraphs)
+    mod_product_graph = pgl(linegraphs, computed_node_anchor) if limit_pg else pgnl(linegraphs)
 
     ## Mapping edges in the product graph to their color
     color_dictionary = nx.get_edge_attributes(mod_product_graph, "color")

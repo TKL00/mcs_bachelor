@@ -8,7 +8,7 @@ def _has_node_in_common(u, v, n_coordinates):
     return False
 
 ### Authors: Tobias Klink Lehn (toleh20@student.sdu.dk) and Kasper Halkjær Beider (kbeid20@student.sdu.dk)
-def product_graph(L):
+def product_graph_no_limit(L):
     """
         Computes the modular product of a list of graphs.
     """
@@ -64,14 +64,15 @@ def product_graph(L):
 
     return product_graph 
 
-def product_graph_list(L, lg_node_anchor={}):
+def product_graph_limit(L, lg_node_anchor={}):
     """
         Computes the modular product of all NetworkX graphs contained in L.
         lg_node_anchor maps a node, u, of L[0] to all nodes, v_i, of lg_node_anchor[u] .
         With that, node lg_node_anchor[u][0] is also mapped to lg_node_anchpr[u][1] ... and so forth.
 
-        Additionally, the product graph nodes are filtered with respect to the lg_node_anchor such that no
-        nodes outside of the anchor nodes in the product graph are included.
+        Additionally, the product graph nodes are filtered with respect to the lg_node_anchor. Only nodes
+        connected to an anchor point by a red/blue edge will be included. Blue/red edges among added
+        nodes are also included.
     """
 
     product_graph = nx.Graph()
