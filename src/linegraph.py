@@ -36,34 +36,42 @@ def line_graph(G):
             if has_node_in_common(G_edges[i], G_edges[j]):
                 LG.add_edge(i, j)
 
+    ## add additional decorations to nodes
+
     return LG
 
-def convert_edge_anchor_lg(G, H, edge_anchor):
+def convert_edge_anchor_lg_list(L, edge_anchor):
     """
-    Assumes edge_anchor is from G_edge -> H_edge.
-
-    Computes the node_anchor in line graphs of G and H by the given edge_anchor.
+    Computes the node_anchor of the line graphs of all graphs in L based on edge_anchor.
 
     ``Parameters``:
+        L (list (Graph)): A list of networkX graphs
+        edge_anchor (dict: edge -> [edge]): A dictionary mapping edges from L[0] to all edges in in their edge list (all of these edges are
+                                            transitively and symmetrically mapped) 
 
     ``Returns``:
-        node_map ( dict: int -> int ): The mapping from node i to node j in the linegraph which corresponds to 
-                                       edge i and edge j in the original graphs.
+        node_map ( dict: node -> list(node) ): The mapping from node in L[0] to nodes in the line graphs L[i] for i > 0.
     """
 
     node_map = {}
 
-    G_edges = list(G.edges)
-    H_edges = list(H.edges)
+    n_graphs = len(L)
+    ## list of edge lists from all graphs in L
+    edgelist = [list(L[i].edges) for i in range(n_graphs)]
 
     for keys in edge_anchor:
-        G_edge = keys
-        H_edge = edge_anchor[keys]
+        L_0_edge = keys
+        L_0_edge_index = edgelist[0].index(L_0_edge)
+        mapped_nodes = edge_anchor[L_0_edge]
+        mappings = []
+        for graphs in range(1, n_graphs):
+            ## find node index of the current edge in the mapping
+            L_i_edge = mapped_nodes[graphs - 1]
+            L_i_edge_index = edgelist[graphs].index(L_i_edge)
+            mappings.append(L_i_edge_index)
 
-        LG_node = G_edges.index(G_edge)
-        LH_node = H_edges.index(H_edge)
-
-        node_map[LG_node] = LH_node
+        ## map the L[0] edge index (which is the node number in the line graph) to the list of nodes
+        node_map[L_0_edge_index] = mappings
 
     return node_map
 
