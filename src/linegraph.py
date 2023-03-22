@@ -1,7 +1,7 @@
 import networkx as nx
 
 ### Authors: Tobias Klink Lehn (toleh20@student.sdu.dk) and Kasper Halkjær Beider (kbeid20@student.sdu.dk)
-def line_graph(G):
+def line_graph(G, molecule=False):
     """
     Creates the Line Graph representation, L(G) of G.    
     L(G) is constructed in the following way: for each edge in G, make a vertex in L(G); 
@@ -9,6 +9,11 @@ def line_graph(G):
 
         `Parameters`:
             G (Graph): A NetworkX graph.
+        
+        `Optional`:
+            molecule (Boolean): A boolean optional to specify whether the nodes are decorated with attributes
+                atom_pair: A set of atoms that a node connects e.g. {C, O}
+                bond_type: The type of bond of an edge in ['s', 'd', 't', 'q']
         
         `Returns`:
             LG (Graph): A NetworkX graph in which node 'i' in LG corresponds to edge 'i' in G. 
@@ -26,9 +31,20 @@ def line_graph(G):
     LG = nx.Graph()
 
     G_edges = list(G.edges)
+    
+    if molecule:
+        node_attributes = nx.get_node_attributes(G, "atom_type")
+        edge_attributes = nx.get_edge_attributes(G, "bond_type")
 
     for i in range(len(G_edges)):
-        LG.add_node(i)
+        ## Adding molecule-related labels for the nodes in the linegraph
+        if molecule:
+            (u, v) = G_edges[i]
+            u_atom_type = node_attributes[u]
+            v_atom_type = node_attributes[v]
+            LG.add_node(i, atom_pair=set( [u_atom_type, v_atom_type] ), bond_type=edge_attributes[(u, v)] )
+        else:
+            LG.add_node(i)
 
     ## O(n^2)
     for i in range(len(G_edges)):
@@ -36,13 +52,11 @@ def line_graph(G):
             if has_node_in_common(G_edges[i], G_edges[j]):
                 LG.add_edge(i, j)
 
-    ## add additional decorations to nodes
-
     return LG
 
 def convert_edge_anchor_lg_list(L, edge_anchor):
     """
-    Computes the node_anchor of the line graphs of all graphs in L based on edge_anchor.
+    Computes the node_anchor of the line graphs made from the graphs in L based on edge_anchor.
 
     ``Parameters``:
         L (list (Graph)): A list of networkX graphs
@@ -72,6 +86,29 @@ def convert_edge_anchor_lg_list(L, edge_anchor):
 
         ## map the L[0] edge index (which is the node number in the line graph) to the list of nodes
         node_map[L_0_edge_index] = mappings
+
+    return node_map
+
+def convert_edge_anchor_lg(G, H, edge_anchor):
+    """
+    Assumes edge_anchor is from G_edge -> H_edge. Computes the node_anchor in line graphs of G and H by the given edge_anchor.
+    
+    ``Parameters``:
+
+    ``Returns``:
+        node_map ( dict: int -> int ): The mapping from node i to node j in the linegraph which corresponds to 
+                                       edge i and edge j in the original graphs.
+    """
+
+    node_map = {}
+    G_edges = list(G.edges)
+    H_edges = list(H.edges)
+    for keys in edge_anchor:
+        G_edge = keys
+        H_edge = edge_anchor[keys]
+        LG_node = G_edges.index(G_edge)
+        LH_node = H_edges.index(H_edge)
+        node_map[LG_node] = LH_node
 
     return node_map
 
