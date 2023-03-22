@@ -1,12 +1,11 @@
 from productgraph import product_graph_no_limit as pgnl
 from productgraph import product_graph_limit as pgl
 from linegraph import line_graph as lg
-from linegraph import convert_edge_anchor_lg
 from linegraph import convert_edge_anchor_lg_list
 import networkx as nx
 from queue import Queue
 import copy
-from draw_graphs import draw_product_graph, draw_two_graphs, draw_blue_connected_components
+from draw_graphs import draw_product_graph, draw_two_graphs, draw_blue_connected_components, draw_molecules
 
 
 ### Authors: Tobias Klink Lehn (toleh20@student.sdu.dk) and Kasper Halkjær Beider (kbeid20@student.sdu.dk)
@@ -219,7 +218,7 @@ def mcs_leviBarrowBurstall(G, H, node_anchor={}, edge_anchor={}):
         
         return all_mappings
 
-def mcs_list_leviBarrowBurstall(L, edge_anchor, limit_pg=True):
+def mcs_list_leviBarrowBurstall(L, edge_anchor, limit_pg=True, molecule=False):
     """
         Computes the Maximum Common Subgraph using the Algorithm suggested by
         G. Levi and H.G. Barrow + R.M. Burstall in 1973 and 1975 respectively.
@@ -369,13 +368,13 @@ def mcs_list_leviBarrowBurstall(L, edge_anchor, limit_pg=True):
 
     ## Use Line-Graph implementation
 
-    linegraphs = [lg(L[i]) for i in range(n_graphs)]
+    linegraphs = [lg(L[i], molecule=molecule) for i in range(n_graphs)]
 
     ## Mapping: v in L[0] -> u in [L[1] for i > 0]
     computed_node_anchor = convert_edge_anchor_lg_list(L, edge_anchor)
     
     ## Compute product graph, either constraining it to only include A and N, or include all possible nodes.
-    mod_product_graph = pgl(linegraphs, computed_node_anchor) if limit_pg else pgnl(linegraphs)
+    mod_product_graph = pgl(linegraphs, computed_node_anchor, molecule=molecule) if limit_pg else pgnl(linegraphs)
 
     ## Mapping edges in the product graph to their color
     color_dictionary = nx.get_edge_attributes(mod_product_graph, "color")
@@ -431,36 +430,168 @@ def all_products(L, anchored_edges):
 if __name__ == "__main__":
     G = nx.Graph()
     G.add_edges_from([(0,1), (0,2), (1,2), (2,3), (3,4)])
-    lG = lg(G)
+    G_node_attributes = {
+                         0: {"atom_type":"C"},
+                         1: {"atom_type":"N"},
+                         2: {"atom_type":"C"},
+                         3: {"atom_type":"O"},
+                         4: {"atom_type":"C"}
+                        }
+    G_edge_attributes = {
+                        (0, 1): {"bond_type": "s"},
+                        (0, 2): {"bond_type": "s"},
+                        (1, 2): {"bond_type": "s"},
+                        (2, 3): {"bond_type": "s"},
+                        (3, 4): {"bond_type": "s"},
+                        }
+    nx.set_edge_attributes(G, G_edge_attributes)
+    nx.set_node_attributes(G, G_node_attributes)
+    
+    lG = lg(G, molecule=True)
 
     H = nx.Graph()
     H.add_edges_from([(0,1), (1,2), (1,3), (1,7), (2,3), (3,4), (3,6), (6, 7), (7, 8), (4,5)])
-    lH = lg(H)
+    H_node_attributes = {0: {"atom_type":"C"},
+                         1: {"atom_type":"C"},
+                         2: {"atom_type":"C"},
+                         3: {"atom_type":"C"},
+                         4: {"atom_type":"O"},
+                         5: {"atom_type":"C"},
+                         6: {"atom_type":"C"},
+                         7: {"atom_type":"C"},
+                         8: {"atom_type":"C"},
+                        }
+    H_edge_attributes = {
+                        (0, 1): {"bond_type": "s"},
+                        (1, 2): {"bond_type": "s"},
+                        (1, 3): {"bond_type": "s"},
+                        (1, 7): {"bond_type": "s"},
+                        (2, 3): {"bond_type": "s"},
+                        (3, 4): {"bond_type": "s"},
+                        (3, 6): {"bond_type": "s"},
+                        (6, 7): {"bond_type": "s"},
+                        (7, 8): {"bond_type": "s"},
+                        (4, 5): {"bond_type": "s"},
+                        }
+    nx.set_edge_attributes(H, H_edge_attributes)
+    nx.set_node_attributes(H, H_node_attributes)
+    lH = lg(H, molecule=True)
 
     I = nx.Graph()
     I.add_edges_from([(0,1),(0,3),(1, 2),(2, 3)])
-    lI = lg(I)
+    I_node_attributes = {
+                         0: {"atom_type":"C"},
+                         1: {"atom_type":"O"},
+                         2: {"atom_type":"C"},
+                         3: {"atom_type":"C"},
+                        }
+    I_edge_attributes = {
+                        (0, 1): {"bond_type": "s"},
+                        (0, 3): {"bond_type": "s"},
+                        (1, 2): {"bond_type": "s"},
+                        (2, 3): {"bond_type": "s"},
+                        }
+    nx.set_edge_attributes(I, I_edge_attributes)
+    nx.set_node_attributes(I, I_node_attributes)
+
+    lI = lg(I, molecule=True)
+
+    lG_atom_attributes = nx.get_node_attributes(lG, "atom_pair")
+    lH_atom_attributes = nx.get_node_attributes(lH, "atom_pair")
+    lI_atom_attributes = nx.get_node_attributes(lI, "atom_pair")
+
+    lG_bond_attributes = nx.get_node_attributes(lG, "bond_type")
+    lH_bond_attributes = nx.get_node_attributes(lH, "bond_type")
+    lI_bond_attributes = nx.get_node_attributes(lI, "bond_type")
 
     list_edge_anchor = {
         (3, 4): [(4, 5), (0, 1)],
         (2, 3): [(3, 4), (1, 2)]
     }
 
-    print("WITH LIMITATION")
-    subgraphs_list_three = mcs_list_leviBarrowBurstall([G, H, I], list_edge_anchor)
+    pg = pgl([lG, lH, lI], lg_node_anchor=convert_edge_anchor_lg_list([G, H, I], list_edge_anchor), molecule=True)
+
+    # subgraphs_list_three = mcs_list_leviBarrowBurstall([G, H, I], list_edge_anchor)
+    # print(subgraphs_list_three)
+          
+    # subgraphs_list_three_molecules = mcs_list_leviBarrowBurstall([G, H, I], list_edge_anchor, molecule=True)
+    # print(subgraphs_list_three_molecules)
+
+
+    propanic_acid = nx.Graph()
+    propanic_acid.add_edges_from([(0, 1), (1, 2), (2, 3), (2, 4), (4, 5), (0, 8), (0, 9), (0, 10), (1, 6), (1, 7)])
+    propanic_acid_node_attributes = {
+                         0: {"atom_type":"C"},
+                         1: {"atom_type":"C"},
+                         2: {"atom_type":"C"},
+                         3: {"atom_type":"O"},
+                         4: {"atom_type":"O"},
+                         5: {"atom_type": "H"},
+                         6: {"atom_type": "H"},
+                         7: {"atom_type":"C"},
+                         8: {"atom_type": "H"},
+                         9: {"atom_type": "H"},
+                         10: {"atom_type": "H"}
+                        }
+    propanic_acid_edge_attributes = {
+                        (0, 1): {"bond_type": "s"}, 
+                        (1, 2): {"bond_type": "s"},
+                        (2, 3): {"bond_type": "d"}, 
+                        (2, 4): {"bond_type": "s"}, 
+                        (4, 5): {"bond_type": "s"}, 
+                        (0, 8): {"bond_type": "s"}, 
+                        (0, 9): {"bond_type": "s"}, 
+                        (0, 10): {"bond_type": "s"}, 
+                        (1, 6): {"bond_type": "s"}, 
+                        (1, 7): {"bond_type": "s"}
+                        }
+
+    nx.set_node_attributes(propanic_acid, propanic_acid_node_attributes)
+    nx.set_edge_attributes(propanic_acid, propanic_acid_edge_attributes)
     
-    print("MAPPINGS:")
-    for mappings in subgraphs_list_three:
-        print(mappings)
 
-    print()
-    print()
-    print("WITHOUT LIMITATION")
-    subgraphs_list_three_no_limit = mcs_list_leviBarrowBurstall([G, H, I], list_edge_anchor, limit_pg=False)
+    methane_acid = nx.Graph()
+    methane_acid.add_edges_from([(0, 1), (0, 2), (0, 4), (2, 3)])
+    methane_acid_node_attributes = {
+                        0: {"atom_type":"C"},
+                        1: {"atom_type":"O"},
+                        2: {"atom_type":"O"},
+                        3: {"atom_type":"H"},
+                        4: {"atom_type":"H"},
+    }
+    methane_acid_edge_attributes = {
+                        (0, 1): {"bond_type": "d"},
+                        (0, 2): {"bond_type": "s"}, 
+                        (0, 4): {"bond_type": "s"}, 
+                        (2, 3): {"bond_type": "s"}
+    }
+    nx.set_node_attributes(methane_acid, methane_acid_node_attributes)
+    nx.set_edge_attributes(methane_acid, methane_acid_edge_attributes)
 
-    print("MAPPINGS:")
-    for mappings in subgraphs_list_three_no_limit:
-        print(mappings)
+    methanol = nx.Graph()
+    methanol.add_edges_from([(0, 1), (0, 3), (0, 4), (0,5), (1, 2)])
+    methanol_node_attributes = {
+                         0: {"atom_type":"C"},
+                         1: {"atom_type":"O"},
+                         2: {"atom_type":"H"},
+                         3: {"atom_type":"H"},
+                         4: {"atom_type":"H"},
+                         5: {"atom_type": "H"},
+                        }
+    methanol_edge_attributes = {
+                        (0, 1): {"bond_type": "s"}, 
+                        (0, 3): {"bond_type": "s"}, 
+                        (0, 4): {"bond_type": "s"}, 
+                        (0, 5): {"bond_type": "s"}, 
+                        (1, 2): {"bond_type": "s"}
+    }
+    nx.set_node_attributes(methanol, methanol_node_attributes)
+    nx.set_edge_attributes(methanol, methanol_edge_attributes)
+
+    molecule_edge_anchor = {
+        (2, 4): [(0, 2), (0, 1)]
+    }
+
+    molecule_subgraph = mcs_list_leviBarrowBurstall([propanic_acid, methane_acid, methanol], molecule_edge_anchor, molecule=True)
     
-
-
+    draw_molecules([propanic_acid, methane_acid, methanol], molecule_subgraph,molecule_edge_anchor)
