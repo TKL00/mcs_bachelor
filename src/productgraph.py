@@ -64,7 +64,7 @@ def product_graph_no_limit(L):
 
     return product_graph 
 
-def product_graph_limit(L, lg_node_anchor={}):
+def product_graph_limit(L, lg_node_anchor={}, molecule=False):
     """
         Computes the modular product of all NetworkX graphs contained in L.
         lg_node_anchor maps a node, u, of L[0] to all nodes, v_i, of lg_node_anchor[u] .
@@ -75,7 +75,32 @@ def product_graph_limit(L, lg_node_anchor={}):
         nodes are also included.
     """
 
+    def molecule_atom_bond_check(node, dimensions, atom_pair_attributes, bond_type_attributes):
+        """
+            Returns true if the given node agrees on bond types and atom pairs 
+        """
+
+        agree_on_atom_pair = True
+        agree_on_bond_type = True
+        ## set the target value to be the value of the first node
+        target_atom_pair = atom_pair_attributes[0][node[0]]
+        target_bond_type = bond_type_attributes[0][node[0]]
+
+        for i in range(1, dimensions):
+            if atom_pair_attributes[i][node[i]] != target_atom_pair:
+                agree_on_atom_pair = False
+                break
+            if bond_type_attributes[i][node[i]] != target_bond_type:
+                agree_on_bond_type = False
+                break
+
+        return agree_on_atom_pair and agree_on_bond_type
+
     product_graph = nx.Graph()
+
+    if molecule:
+        atom_pairs = [nx.get_node_attributes(graph, "atom_pair") for graph in L]
+        bond_types = [nx.get_node_attributes(graph, "bond_type") for graph in L]
 
     ## list of node lists
     node_list = [sorted(list(g.nodes)) for g in L]
@@ -84,10 +109,17 @@ def product_graph_limit(L, lg_node_anchor={}):
     ## NOTE: Instead of cartesian product of all node sets, do cartesian product on sets 
     ## of single bonds, double bonds etc. and unify these.
     product_nodes = list(itertools.product(*node_list))
-    
-    node_count = 1
-    for i in range(n_graphs):
-        node_count = node_count * len(node_list[i])
+
+    ## filter product_nodes based on atom_pairs and bond_types if looking at a molecule
+    if molecule:
+        product_nodes = list(filter(lambda node: molecule_atom_bond_check(node, n_graphs, atom_pairs, bond_types), product_nodes))
+        node_count = len(product_nodes)
+    else:
+        ## calculate number of potential nodes in the product graph without filtered for molecule attributes
+        node_count = 1
+        for i in range(n_graphs):
+            node_count = node_count * len(node_list[i])
+        
 
     ## unpack all anchor_nodes from the node anchor
     anchor_nodes = [ (v, *lg_node_anchor[v]) for v in lg_node_anchor]
@@ -98,15 +130,15 @@ def product_graph_limit(L, lg_node_anchor={}):
     ## and are added based on their edge to an anchor
     for i in range(node_count):
         node_i = product_nodes[i]
-        
-        ## check for mixed
+
+        ## check for mixed anchor
         contain_anchor_nodes = False 
         for i in range(n_graphs):
             if node_i[i] in anchor_vector[i]:
                 contain_anchor_nodes = True
         
-        ## Only look at nodes that either are anchor nodes, or do not try and match 
-        ## an anchor node from one graph to a non-anchor node in other graph
+        ## Only look at nodes that consist completely of anchor nodes (i.e. not mixed w, anchor and non-anchor), 
+        ## or nodes that are completely anchor-free.
         if (contain_anchor_nodes and node_i in anchor_nodes) or not contain_anchor_nodes:
 
             ## compute a list where neighbourhood[i] is the neighbourhood of node i
