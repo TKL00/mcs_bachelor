@@ -7,6 +7,7 @@ import networkx as nx
 from queue import Queue
 import copy
 from draw_graphs import draw_product_graph, draw_two_graphs, draw_blue_connected_components, draw_molecules
+from molecules import *
 
 
 ### Authors: Tobias Klink Lehn (toleh20@student.sdu.dk) and Kasper Halkjær Beider (kbeid20@student.sdu.dk)
@@ -229,7 +230,7 @@ def mcs_list_leviBarrowBurstall(L, edge_anchor, limit_pg=True, molecule=False):
 
             H (Graph): A NetworkX graph, nodes are integers but may be decorated with items
 
-            edge_anchor (dict: int -> int): A valid one-to-one mapping from 'n' edges in G to 'n' edges in H, overrules a given node_anchor
+            edge_anchor (dict: edge -> list(edge)): A valid one-to-one mapping from 'n' edges in G to 'n' edges in H, overrules a given node_anchor
 
         `Optional`:
             limit_pg (boolean): Indicates whether the product graph should be limited to the neighbourhood of anchors or not, default to true
@@ -371,6 +372,7 @@ def mcs_list_leviBarrowBurstall(L, edge_anchor, limit_pg=True, molecule=False):
                             Q.put(v)
                 node_color_lookup[u] = "b"
             
+            ## 
             reachable_nodes = [node for node in comp_clique if node_color_lookup[node] == 'b']
             MCSs.append(reachable_nodes + A)
 
@@ -386,9 +388,16 @@ def mcs_list_leviBarrowBurstall(L, edge_anchor, limit_pg=True, molecule=False):
 
     ## Mapping: v in L[0] -> u in [L[1] for i > 0]
     computed_node_anchor = convert_edge_anchor_lg_list(L, edge_anchor)
+    ## Unfold anchor nodes in the modular product graph
+    anchor_nodes =  [ (v, *computed_node_anchor[v]) for v in computed_node_anchor]
     
     ## Compute product graph, either constraining it to only include A and N, or include all possible nodes.
-    mod_product_graph = pgl(linegraphs, computed_node_anchor, molecule=molecule) if limit_pg else pgnl(linegraphs)
+    mod_product_graph = pgl(linegraphs, anchor_nodes, molecule=molecule) if limit_pg else pgnl(linegraphs)
+
+    ## If no nodes are added, |anchor| = 1 and N = Ø. If product graph only contains 
+    ## anchor nodes (|anchor| >= 2), then N = Ø.
+    if not mod_product_graph.nodes or anchor_nodes == mod_product_graph.nodes:
+        return [edge_anchor]
 
     ## Mapping edges in the product graph to their color
     color_dictionary = nx.get_edge_attributes(mod_product_graph, "color")
@@ -397,7 +406,7 @@ def mcs_list_leviBarrowBurstall(L, edge_anchor, limit_pg=True, molecule=False):
     ## v_0 is a node in L[0] and v_i is a node in L[i]. Folding out the list of mappings.
     anchor_points = [ (l_zero, *computed_node_anchor[l_zero]) for l_zero in computed_node_anchor ]
 
-    ## computing N by intersecting all neighbours among the anchor points (NOTE: possible optimization when computing the intersection,)
+    ## computing N by intersecting all neighbours among the anchor points (NOTE: possible optimization when computing the intersection)
     common_neighbours_N = list(mod_product_graph.adj[anchor_points[0]].keys())
     for nodes in anchor_points:
         common_neighbours_N = [value for value in common_neighbours_N if value in mod_product_graph.adj[nodes].keys()]
@@ -408,7 +417,7 @@ def mcs_list_leviBarrowBurstall(L, edge_anchor, limit_pg=True, molecule=False):
 
     ## If no components exist, the anchor is the MCS
     if len(listN) == 0:
-        return edge_anchor
+        return [edge_anchor]
     else:
         MCSs = connected_MCS(listN, mod_product_graph, anchor_points, color_dictionary)
 
@@ -445,7 +454,6 @@ def iterative_approach(L, anchored_edges, limit_pg=True, molecule=False):
         new_anchor = {key: [anchor[key][to_mcs_graph - 1]] for key in anchor}
 
         mcs = mcs_list_leviBarrowBurstall([graph_one, graph_two], new_anchor, limit_pg, molecule)
-
 
         for found_mapping in mcs:
             ## Add no new mapping if mapping is equal to anchor point
@@ -492,108 +500,43 @@ def iterative_approach(L, anchored_edges, limit_pg=True, molecule=False):
 
         _iterative_approach_rec(L, current_mcs_graph, 2, mapping_list, copy.deepcopy(mappings), anchor_size, anchored_edges, len(L), limit_pg, molecule)
 
-    
+    ## If nothing was added to the mapping list along the way, the anchor is the only common subgraph
+    if not mapping_list:
+        mapping_list = [anchored_edges]
 
     return mapping_list
 
-
-
-    ## Call mcs_list on the first two graphs.
-    ## Loop on their result and call recursively on the list (Use a customized anchor map for individual calls 
-    ## as the given anchor is an anchor map from L[0] to all other graphs, and the anchor should be specified for two graphs at a time)
-    ## Check if per call result is equal to the original anchor size
-
-    return None
-
-def all_products(L, anchored_edges):
+def all_products(L, anchored_edges, limit_pg=True, molecule=False):
     """
         L: List of graphs
     """
 
-    subgraphs = mcs_list_leviBarrowBurstall(L, anchored_edges)
+    subgraphs = mcs_list_leviBarrowBurstall(L, anchored_edges, limit_pg, molecule)
 
-    return None
+    return subgraphs
 
 
 if __name__ == "__main__":
 
-    propanic_acid = nx.Graph()
-    propanic_acid.add_edges_from([(0, 1), (1, 2), (2, 3), (2, 4), (4, 5), (0, 8), (0, 9), (0, 10), (1, 6), (1, 7)])
-    propanic_acid_node_attributes = {
-                         0: {"atom_type":"C"},
-                         1: {"atom_type":"C"},
-                         2: {"atom_type":"C"},
-                         3: {"atom_type":"O"},
-                         4: {"atom_type":"O"},
-                         5: {"atom_type": "H"},
-                         6: {"atom_type": "H"},
-                         7: {"atom_type":"C"},
-                         8: {"atom_type": "H"},
-                         9: {"atom_type": "H"},
-                         10: {"atom_type": "H"}
-                        }
-    propanic_acid_edge_attributes = {
-                        (0, 1): {"bond_type": "s"}, 
-                        (1, 2): {"bond_type": "s"},
-                        (2, 3): {"bond_type": "d"}, 
-                        (2, 4): {"bond_type": "s"}, 
-                        (4, 5): {"bond_type": "s"}, 
-                        (0, 8): {"bond_type": "s"}, 
-                        (0, 9): {"bond_type": "s"}, 
-                        (0, 10): {"bond_type": "s"}, 
-                        (1, 6): {"bond_type": "s"}, 
-                        (1, 7): {"bond_type": "s"}
-                        }
-
-    nx.set_node_attributes(propanic_acid, propanic_acid_node_attributes)
-    nx.set_edge_attributes(propanic_acid, propanic_acid_edge_attributes)
-    
-
-    methane_acid = nx.Graph()
-    methane_acid.add_edges_from([(0, 1), (0, 2), (0, 4), (2, 3)])
-    methane_acid_node_attributes = {
-                        0: {"atom_type":"C"},
-                        1: {"atom_type":"O"},
-                        2: {"atom_type":"O"},
-                        3: {"atom_type":"H"},
-                        4: {"atom_type":"H"},
-    }
-    methane_acid_edge_attributes = {
-                        (0, 1): {"bond_type": "d"},
-                        (0, 2): {"bond_type": "s"}, 
-                        (0, 4): {"bond_type": "s"}, 
-                        (2, 3): {"bond_type": "s"}
-    }
-    nx.set_node_attributes(methane_acid, methane_acid_node_attributes)
-    nx.set_edge_attributes(methane_acid, methane_acid_edge_attributes)
-
-    methanol = nx.Graph()
-    methanol.add_edges_from([(0, 1), (0, 3), (0, 4), (1, 2)])
-    methanol_node_attributes = {
-                         0: {"atom_type":"C"},
-                         1: {"atom_type":"O"},
-                         2: {"atom_type":"H"},
-                         3: {"atom_type":"O"},
-                         4: {"atom_type":"H"},
-                        }
-    methanol_edge_attributes = {
-                        (0, 1): {"bond_type": "s"}, 
-                        (0, 3): {"bond_type": "d"}, 
-                        (0, 4): {"bond_type": "s"}, 
-                        (0, 5): {"bond_type": "s"}, 
-                        (1, 2): {"bond_type": "s"}
-    }
-    nx.set_node_attributes(methanol, methanol_node_attributes)
-    nx.set_edge_attributes(methanol, methanol_edge_attributes)
+    propanic_acid = propanic_acid()
+    glucose = glucose()
+    caffeine = caffeine()
 
     molecule_edge_anchor = {
-        (2, 4): [(0, 2), (0, 1)]
+        (1, 2): [(1, 2), (0, 23)]
     }
 
+    graph_list = [propanic_acid, glucose, caffeine]
 
-    # molecule_subgraph = mcs_list_leviBarrowBurstall([propanic_acid, methane_acid, methanol], molecule_edge_anchor, molecule=True)
-    molecule_subgraph = mcs_list_leviBarrowBurstall([propanic_acid, methane_acid, methanol], molecule_edge_anchor, molecule=True)
+    print(f"\t\t\t\t\t\t\t\t\t\t\t\tAll products")
+    molecule_subgraph = all_products(graph_list, molecule_edge_anchor, molecule=True)
     for mapping in molecule_subgraph:
         print(f"Resulting mapping: {mapping}")
+
+    print(f"\t\t\t\t\t\t\t\t\t\t\t\tAll List")
+    molecule_subgraph_list = iterative_approach(graph_list, molecule_edge_anchor, molecule=True)
+    print(f"Result: {molecule_subgraph_list}")
+    for mapping in molecule_subgraph_list:
+        print(f"Resulting mapping: {mapping}")
     
-    draw_molecules([propanic_acid, methane_acid, methanol], molecule_subgraph,molecule_edge_anchor)
+    draw_molecules([propanic_acid, glucose, caffeine], molecule_subgraph,molecule_edge_anchor)
