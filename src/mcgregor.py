@@ -212,7 +212,6 @@ def mcs_mcgregor(G, H, anchor_point={}):
             if arcsleft >= bestarcsleft:        ## == comes from building all MCS, even ones where arcsleft are equal
                 if v == G_node_amt - 1:
                     all_mappings.append((deepcopy(current_mapping), deepcopy(MARCS), arcsleft))
-                    counter += 1
                     bestarcsleft = arcsleft
                 else:
                     ## Store values in workspace associated with node v
@@ -226,7 +225,6 @@ def mcs_mcgregor(G, H, anchor_point={}):
                     ## recent non-anchored node and save this mapping.
                     if v == G_node_amt:
                         all_mappings.append((deepcopy(current_mapping), deepcopy(MARCS), arcsleft))
-                        counter += 1
                         bestarcsleft = arcsleft
                         v = non_anchored_node
                     ## New branch made, no edges killed and no nodes in H
@@ -251,6 +249,7 @@ def mcs_mcgregor(G, H, anchor_point={}):
             ## If the algorithm has backtracked past the first non anchor point it means
             ## there are only anchor points left, therefore the algorithm stops.
             if v < first_non_anchor:
+                ## return only max
                 max_arcsleft = max(all_mappings, key=lambda items:items[2])[2]
                 all_mappings_filtered = list(filter(lambda x: x[2] == max_arcsleft, all_mappings))
                 return all_mappings_filtered
@@ -284,24 +283,18 @@ if __name__ == "__main__":
     H = nx.Graph()
     H.add_edges_from([(0,1), (1,2), (1,3), (1,7), (2,3), (3,4), (3,6), (6, 7), (7, 8), (4,5)])
 
+    
     edge_anchor = {
                     (0, 1): (2, 1)
                     }
 
     node_anchor = convert_edge_anchor(G, H, edge_anchor)
-    result = mcs_mcgregor(G, H)
 
-    # DRAWING
-    # show_result = result[0]
-
-    # print("G nodes:", G.nodes)
-    # print("H nodes", H.nodes)
-    # print(show_result[0])
-    # draw_mcgregor_mcs_graphs(G, H, show_result[0], show_result[1])
-    # subgraph = construct_cs(G, show_result[1])
+    test_node_anchor = {
+                    0: 5,
+                    1: 4
+    }
+    result = mcs_mcgregor(G, H, test_node_anchor)
 
     for results in result:
-        draw_mcgregor_mcs_graphs(G, H, results[0], results[1])
-
-    # draw_two_graphs(G, H)
-    # draw_two_graphs(G, subgraph)
+        draw_mcgregor_mcs_graphs(G, H, results[0], results[1], test_node_anchor)
