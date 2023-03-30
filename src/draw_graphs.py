@@ -165,6 +165,7 @@ def draw_molecules(L, mappings, edge_anchor):
         Highlights edge_anchor by grey edges, labels the edges based on the mappings.
     """
 
+    ## List of atom_type and bond_type maps for each graph
     atom_types = [nx.get_node_attributes(graph, "atom_type") for graph in L]
     bond_types = [nx.get_edge_attributes(graph, "bond_type") for graph in L]
 
@@ -185,17 +186,13 @@ def draw_molecules(L, mappings, edge_anchor):
         edge_color_map = {edge: bond_color[bond_types[i][edge]] for edge in graph.edges}
         edge_colors.append(edge_color_map)
 
-    fig, axs = plt.subplots(ncols=2, nrows=n_rows)
-
-
-    print(fig)
-    print(axs)
+    
 
     ## Draw each mapping separately
     for mapping in mappings:
+        fig, axs = plt.subplots(ncols=2, nrows=n_rows)
         graph_index = 0
 
-        print(f"Mapping {mapping}")
         for ax in axs.flat:
             ## Remove border
             ax.spines['top'].set_visible(False)
@@ -219,7 +216,26 @@ def draw_molecules(L, mappings, edge_anchor):
             
             ## Draw each edge individually, color is based on their bond type
             for edge in graph.edges:
-                nx.draw_networkx_edges(graph, position, [edge], width=1.5, edge_color=edge_colors[graph_index][edge], ax=ax)
+                edge_bond_type = bond_types[graph_index][edge]
+
+                if edge_bond_type == 's':
+                    nx.draw_networkx_edges(graph, position, [edge], width=1.0, edge_color="black", ax=ax)
+
+                elif edge_bond_type == 'd':
+                    nx.draw_networkx_edges(graph, position, [edge], width=3.0, edge_color="black", ax=ax)
+                    nx.draw_networkx_edges(graph, position, [edge], width=1.3, edge_color="white", ax=ax)
+
+                elif edge_bond_type == 't':
+                    nx.draw_networkx_edges(graph, position, [edge], width=7.0, edge_color="black", ax=ax)
+                    nx.draw_networkx_edges(graph, position, [edge], width=4.25, edge_color="white", ax=ax)
+                    nx.draw_networkx_edges(graph, position, [edge], width=1.6, edge_color="black", ax=ax)
+
+                ## quadruple bond
+                else:
+                    nx.draw_networkx_edges(graph, position, [edge], width=10, edge_color="black", ax=ax)
+                    nx.draw_networkx_edges(graph, position, [edge], width=7, edge_color="white", ax=ax)
+                    nx.draw_networkx_edges(graph, position, [edge], width=4, edge_color="black", ax=ax)
+                    nx.draw_networkx_edges(graph, position, [edge], width=1.00, edge_color="white", ax=ax)
             
             ## Draw mapped edge labels
             label_iterator = 0
