@@ -2,6 +2,7 @@ from productgraph import product_graph_no_limit as pgnl
 from productgraph import product_graph_limit as pgl
 from linegraph import line_graph as lg
 from linegraph import convert_edge_anchor_lg_list
+from itertools import combinations
 import networkx as nx
 from queue import Queue
 import copy
@@ -231,7 +232,10 @@ def mcs_list_leviBarrowBurstall(L, edge_anchor, limit_pg=True, molecule=False):
             edge_anchor (dict: int -> int): A valid one-to-one mapping from 'n' edges in G to 'n' edges in H, overrules a given node_anchor
 
         `Optional`:
-            limit_pg (boolean): A boolean to indicate whether the product graph should be limited to the neighbourhood of anchors or not, default to true
+            limit_pg (boolean): Indicates whether the product graph should be limited to the neighbourhood of anchors or not, default to true
+
+            molecule (boolean): Indicates whether the graphs in L are decorated molecules. If true, it is expected that each graph has
+                                attribute "atom_type" on nodes and "bond_type" on edges. 
         
         `Returns`:
             all_mappings (list( dict: node -> node) or list( dict: edge -> edge)): 
@@ -282,7 +286,7 @@ def mcs_list_leviBarrowBurstall(L, edge_anchor, limit_pg=True, molecule=False):
         while not Q.empty():
             u = Q.get()
             neighbours = PG.adj[u]
-            for v in PG.adj[u]:
+            for v in neighbours:
                 if node_color_lookup[v] == "w":
                     edge_color = edge_color_lookup[(u, v)] if (u, v) in edge_color_lookup else edge_color_lookup[(v, u)]                    
                     ## Don't consider nodes that are reached by red edges
@@ -315,7 +319,8 @@ def mcs_list_leviBarrowBurstall(L, edge_anchor, limit_pg=True, molecule=False):
             current_component = [blue_source]        
             while not Q.empty():
                 u = Q.get()
-                for v in PG.adj[u]:
+                neighbours = PG.adj[u]
+                for v in neighbours:
                     if node_color_lookup[v] == "w":
                         edge_color = edge_color_lookup[(u, v)] if (u, v) in edge_color_lookup else edge_color_lookup[(v, u)]
                         
@@ -388,16 +393,83 @@ def mcs_list_leviBarrowBurstall(L, edge_anchor, limit_pg=True, molecule=False):
     for nodes in anchor_points:
         common_neighbours_N = [value for value in common_neighbours_N if value in mod_product_graph.adj[nodes].keys()]
 
+    # for key in color_dictionary:
+    #     print(f"Edge: {key} is \"{color_dictionary[key]}\"")
     listN = blue_component_filter(mod_product_graph, common_neighbours_N, anchor_points, color_dictionary)
+
     ## If no components exist, the anchor is the MCS
     if len(listN) == 0:
         return edge_anchor
     else:
         MCSs = connected_MCS(listN, mod_product_graph, anchor_points, color_dictionary)
+        print(f"Mcs: {MCSs}")
+
+        ## UNION DISJOINT BLUE CLIQUES
+        anchor_amt = len(anchor_points)
+        cliques_amt = len(MCSs)
+        union_map = {i: set([i]) for i in range(cliques_amt)}
+        for i in range(cliques_amt):
+            ## Go through all points in the clique excluding the anchor point
+            clique_i = MCSs[i]
+
+            for j in range(i + 1, cliques_amt):
+                clique_j = MCSs[j]
+                has_conflict = False
+
+                ## Only consider non-anchor-nodes in clique_i and clique_j
+                for k in range(len(clique_i) - anchor_amt):
+                    node_i = clique_i[k]                
+
+                    for l in range(len(clique_j) - anchor_amt):
+                        node_j = clique_j[l]
+
+                        if not node_i == node_j:
+                            for m in range(n_graphs):
+                                if node_i[m] == node_j[m]: 
+                                    has_conflict = True
+                                    break          ## break out of coordinate comparison
+                        if has_conflict: break  ## break out of node
+                    if has_conflict: break ## break out of clique
+
+                ## clique 'i' and 'j' can be unioned
+                if not has_conflict:
+                    union_map[i].add(j)
+                    union_map[j].add(i)
+        max_union = len(union_map[max(union_map, key=lambda k: len(union_map[k]))])
+        clique_subsets = []
+        ## Compute combinations up to the lenght of the maximum "available for union" list for a clique.
+        for i in range(1, max_union + 1):
+            clique_subsets.extend(combinations(range(cliques_amt), i))
+
+        ## Compute largest unionable sets of cliques
+        to_union = []
+        for subset in reversed(clique_subsets):
+            subset_as_set = set(subset)
+            is_included = False 
+            ## Check if it's a subset of a larger union, in that case we don't need to look at it
+            for union in to_union:
+                if subset_as_set.issubset(union): 
+                    is_included = True
+                    break
+            
+            if not is_included:
+                to_intersect = [union_map[i] for i in subset]
+                res = union_map[subset[0]].intersection(*to_intersect)
+                if res == subset_as_set:
+                    to_union.append(res)
+
+        print(f"to union list: {to_union}")
+        extended_MCSs = []
+        for unifiables in to_union:
+            initial_set = set()
+            for indices in unifiables:
+                initial_set = initial_set.union(set(MCSs[indices]))
+            print(f"The resulting set: {initial_set}")
+            extended_MCSs.append(list(initial_set))
 
         all_mappings = []
         ## list of clique extensions
-        for mappings in MCSs:
+        for mappings in extended_MCSs:
             current_mapping = {}
             for tuples in mappings:
                 L_0 = edge_lists[0][tuples[0]]
@@ -410,10 +482,81 @@ def mcs_list_leviBarrowBurstall(L, edge_anchor, limit_pg=True, molecule=False):
         return all_mappings
 
 
-def iterative_approach(L, anchored_edges):
+def iterative_approach(L, anchored_edges, limit_pg=True, molecule=False):
     """
         L: List of graphs
     """
+
+    def _iterative_approach_rec(L, current_mcs_graph, to_mcs_graph, all_mappings, current_mapping, anchor_bound, anchor, graph_amt, limit_pg=True, molecule=False):
+        ## If end of L is reached, add the current mapping to the global list of mappings
+        if to_mcs_graph == graph_amt:
+            all_mappings.append(current_mapping)
+            return
+
+        graph_one = current_mcs_graph
+        graph_two = L[to_mcs_graph]
+
+        ## Map edges from current best graph to the upcoming "to_mcs_graph"
+        new_anchor = {key: [anchor[key][to_mcs_graph - 1]] for key in anchor}
+
+        mcs = mcs_list_leviBarrowBurstall([graph_one, graph_two], new_anchor, limit_pg, molecule)
+
+
+        for found_mapping in mcs:
+            ## Add no new mapping if mapping is equal to anchor point
+            if len(found_mapping) > anchor_bound:          
+                ## ADD LABELS
+                current_mcs_graph = nx.Graph()
+                current_mcs_graph.add_edges_from(sorted([key for key in found_mapping]))
+
+                # Inhert labels from current mcs
+                if molecule:
+                    atom_types = nx.get_node_attributes(graph_one, "atom_type")
+                    bond_types = nx.get_edge_attributes(graph_one, "bond_type")
+                    nx.set_node_attributes(current_mcs_graph, atom_types, "atom_type")
+                    nx.set_edge_attributes(current_mcs_graph, bond_types, "bond_type")
+                ## Update the found mapping with the previously found mapped edges
+                for keys in found_mapping:
+                    ## Update the current mapping to include this found mapping, and update this mapping to track previous mappings including itself
+                    if keys in current_mapping: 
+                        current_mapping[keys].append(found_mapping[keys][0])
+                        found_mapping[keys] = current_mapping[keys]
+                ## Continue recursively
+                _iterative_approach_rec(L, current_mcs_graph, to_mcs_graph + 1, all_mappings, found_mapping, anchor_bound, anchor, graph_amt, limit_pg, molecule)
+
+    ## Use anchor_size as guard in the recursive step, terminating branches that reach this length
+    anchor_size = len(anchored_edges)
+    mapping_list = []
+    ## Map L[0] to [L[1]] as initial anchor
+    start_anchor = {key: [anchored_edges[key][0]] for key in anchored_edges}
+    graph_one = L[0]
+    graph_two = L[1]
+
+    mcs = mcs_list_leviBarrowBurstall([graph_one, graph_two], start_anchor, limit_pg, molecule)
+    for mappings in mcs:
+
+        current_mcs_graph = nx.Graph()
+        ## Create edge-induced graph based on the given mapping
+        current_mcs_graph.add_edges_from(sorted([key for key in mappings]))
+        if molecule:
+            atom_types = nx.get_node_attributes(graph_one, "atom_type")
+            bond_types = nx.get_edge_attributes(graph_one, "bond_type")
+
+            nx.set_node_attributes(current_mcs_graph, atom_types, "atom_type")
+            nx.set_edge_attributes(current_mcs_graph, bond_types, "bond_type")
+
+        _iterative_approach_rec(L, current_mcs_graph, 2, mapping_list, copy.deepcopy(mappings), anchor_size, anchored_edges, len(L), limit_pg, molecule)
+
+    
+
+    return mapping_list
+
+
+
+    ## Call mcs_list on the first two graphs.
+    ## Loop on their result and call recursively on the list (Use a customized anchor map for individual calls 
+    ## as the given anchor is an anchor map from L[0] to all other graphs, and the anchor should be specified for two graphs at a time)
+    ## Check if per call result is equal to the original anchor size
 
     return None
 
@@ -428,95 +571,6 @@ def all_products(L, anchored_edges):
 
 
 if __name__ == "__main__":
-    G = nx.Graph()
-    G.add_edges_from([(0,1), (0,2), (1,2), (2,3), (3,4)])
-    G_node_attributes = {
-                         0: {"atom_type":"C"},
-                         1: {"atom_type":"N"},
-                         2: {"atom_type":"C"},
-                         3: {"atom_type":"O"},
-                         4: {"atom_type":"C"}
-                        }
-    G_edge_attributes = {
-                        (0, 1): {"bond_type": "s"},
-                        (0, 2): {"bond_type": "s"},
-                        (1, 2): {"bond_type": "s"},
-                        (2, 3): {"bond_type": "s"},
-                        (3, 4): {"bond_type": "s"},
-                        }
-    nx.set_edge_attributes(G, G_edge_attributes)
-    nx.set_node_attributes(G, G_node_attributes)
-    
-    lG = lg(G, molecule=True)
-
-    H = nx.Graph()
-    H.add_edges_from([(0,1), (1,2), (1,3), (1,7), (2,3), (3,4), (3,6), (6, 7), (7, 8), (4,5)])
-    H_node_attributes = {0: {"atom_type":"C"},
-                         1: {"atom_type":"C"},
-                         2: {"atom_type":"C"},
-                         3: {"atom_type":"C"},
-                         4: {"atom_type":"O"},
-                         5: {"atom_type":"C"},
-                         6: {"atom_type":"C"},
-                         7: {"atom_type":"C"},
-                         8: {"atom_type":"C"},
-                        }
-    H_edge_attributes = {
-                        (0, 1): {"bond_type": "s"},
-                        (1, 2): {"bond_type": "s"},
-                        (1, 3): {"bond_type": "s"},
-                        (1, 7): {"bond_type": "s"},
-                        (2, 3): {"bond_type": "s"},
-                        (3, 4): {"bond_type": "s"},
-                        (3, 6): {"bond_type": "s"},
-                        (6, 7): {"bond_type": "s"},
-                        (7, 8): {"bond_type": "s"},
-                        (4, 5): {"bond_type": "s"},
-                        }
-    nx.set_edge_attributes(H, H_edge_attributes)
-    nx.set_node_attributes(H, H_node_attributes)
-    lH = lg(H, molecule=True)
-
-    I = nx.Graph()
-    I.add_edges_from([(0,1),(0,3),(1, 2),(2, 3)])
-    I_node_attributes = {
-                         0: {"atom_type":"C"},
-                         1: {"atom_type":"O"},
-                         2: {"atom_type":"C"},
-                         3: {"atom_type":"C"},
-                        }
-    I_edge_attributes = {
-                        (0, 1): {"bond_type": "s"},
-                        (0, 3): {"bond_type": "s"},
-                        (1, 2): {"bond_type": "s"},
-                        (2, 3): {"bond_type": "s"},
-                        }
-    nx.set_edge_attributes(I, I_edge_attributes)
-    nx.set_node_attributes(I, I_node_attributes)
-
-    lI = lg(I, molecule=True)
-
-    lG_atom_attributes = nx.get_node_attributes(lG, "atom_pair")
-    lH_atom_attributes = nx.get_node_attributes(lH, "atom_pair")
-    lI_atom_attributes = nx.get_node_attributes(lI, "atom_pair")
-
-    lG_bond_attributes = nx.get_node_attributes(lG, "bond_type")
-    lH_bond_attributes = nx.get_node_attributes(lH, "bond_type")
-    lI_bond_attributes = nx.get_node_attributes(lI, "bond_type")
-
-    list_edge_anchor = {
-        (3, 4): [(4, 5), (0, 1)],
-        (2, 3): [(3, 4), (1, 2)]
-    }
-
-    pg = pgl([lG, lH, lI], lg_node_anchor=convert_edge_anchor_lg_list([G, H, I], list_edge_anchor), molecule=True)
-
-    # subgraphs_list_three = mcs_list_leviBarrowBurstall([G, H, I], list_edge_anchor)
-    # print(subgraphs_list_three)
-          
-    # subgraphs_list_three_molecules = mcs_list_leviBarrowBurstall([G, H, I], list_edge_anchor, molecule=True)
-    # print(subgraphs_list_three_molecules)
-
 
     propanic_acid = nx.Graph()
     propanic_acid.add_edges_from([(0, 1), (1, 2), (2, 3), (2, 4), (4, 5), (0, 8), (0, 9), (0, 10), (1, 6), (1, 7)])
@@ -569,18 +623,17 @@ if __name__ == "__main__":
     nx.set_edge_attributes(methane_acid, methane_acid_edge_attributes)
 
     methanol = nx.Graph()
-    methanol.add_edges_from([(0, 1), (0, 3), (0, 4), (0,5), (1, 2)])
+    methanol.add_edges_from([(0, 1), (0, 3), (0, 4), (1, 2)])
     methanol_node_attributes = {
                          0: {"atom_type":"C"},
                          1: {"atom_type":"O"},
                          2: {"atom_type":"H"},
-                         3: {"atom_type":"H"},
+                         3: {"atom_type":"O"},
                          4: {"atom_type":"H"},
-                         5: {"atom_type": "H"},
                         }
     methanol_edge_attributes = {
                         (0, 1): {"bond_type": "s"}, 
-                        (0, 3): {"bond_type": "s"}, 
+                        (0, 3): {"bond_type": "d"}, 
                         (0, 4): {"bond_type": "s"}, 
                         (0, 5): {"bond_type": "s"}, 
                         (1, 2): {"bond_type": "s"}
@@ -592,6 +645,10 @@ if __name__ == "__main__":
         (2, 4): [(0, 2), (0, 1)]
     }
 
+
+    # molecule_subgraph = mcs_list_leviBarrowBurstall([propanic_acid, methane_acid, methanol], molecule_edge_anchor, molecule=True)
     molecule_subgraph = mcs_list_leviBarrowBurstall([propanic_acid, methane_acid, methanol], molecule_edge_anchor, molecule=True)
+    for mapping in molecule_subgraph:
+        print(f"Resulting mapping: {mapping}")
     
     draw_molecules([propanic_acid, methane_acid, methanol], molecule_subgraph,molecule_edge_anchor)
