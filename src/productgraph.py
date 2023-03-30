@@ -64,7 +64,7 @@ def product_graph_no_limit(L):
 
     return product_graph 
 
-def product_graph_limit(L, lg_node_anchor={}, molecule=False):
+def product_graph_limit(L, anchor_nodes, molecule=False):
     """
         Computes the modular product of all NetworkX graphs contained in L.
         lg_node_anchor maps a node, u, of L[0] to all nodes, v_i, of lg_node_anchor[u] .
@@ -73,6 +73,12 @@ def product_graph_limit(L, lg_node_anchor={}, molecule=False):
         Additionally, the product graph nodes are filtered with respect to the lg_node_anchor. Only nodes
         connected to an anchor point by a red/blue edge will be included. Blue/red edges among added
         nodes are also included.
+
+        `Returns`:
+            product_graph (Graph): A NetworkX graph that contains anchor nodes and all nodes connected to anchor. If the 
+                                   anchor is only one node and no nodes are connected to the anchor, the product graph is empty.
+                                   If the anchor consists of multiple nodes, the product graph will contain at least the anchor nodes.
+
     """
 
     def molecule_atom_bond_check(node, dimensions, atom_pair_attributes, bond_type_attributes):
@@ -120,9 +126,6 @@ def product_graph_limit(L, lg_node_anchor={}, molecule=False):
         for i in range(n_graphs):
             node_count = node_count * len(node_list[i])
         
-
-    ## unpack all anchor_nodes from the node anchor
-    anchor_nodes = [ (v, *lg_node_anchor[v]) for v in lg_node_anchor]
     ## List of vectors. Each vector 'i' specifies which edges in graph L[i] are already included in the anchor.
     anchor_vector = [ [anchor_point[i] for anchor_point in anchor_nodes] for i in range(n_graphs) ]
 
@@ -219,4 +222,5 @@ def product_graph_limit(L, lg_node_anchor={}, molecule=False):
                 elif all_agree_not_adj:
                     product_graph.add_edge( node_i, node_j, color="red")
     
+        
     return product_graph
