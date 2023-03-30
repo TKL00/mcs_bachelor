@@ -2,7 +2,7 @@ from productgraph import product_graph_no_limit as pgnl
 from productgraph import product_graph_limit as pgl
 from linegraph import line_graph as lg
 from linegraph import convert_edge_anchor_lg_list
-from itertools import combinations
+from itertools import chain
 import networkx as nx
 from queue import Queue
 import copy
@@ -345,27 +345,36 @@ def mcs_list_leviBarrowBurstall(L, edge_anchor, limit_pg=True, molecule=False):
             the union of these with the anchor point.
         """
         MCSs = []
+        ## Create node induced subgraph of the modular product graph containing all blue connected components
+        blue_component_graph = nx.Graph(nx.induced_subgraph(PG, chain(*listN)))
+        component_cliques = list(nx.find_cliques(blue_component_graph))
 
-        for component in listN:
-            ## create vertex induced subgraph
-            comp_subgraph = nx.Graph(nx.induced_subgraph(PG, component))
-            ## compute L
-            cliques = list(nx.find_cliques(comp_subgraph))
-            for clique in cliques:
-                blue_edge_found = False
-                for node in clique:
-                    neighbs = PG.adj[node]
-                    for neighbour in neighbs:
-                        if neighbour in A:
-                            ## determine edge color between the node and its anchor neighbour (if one exists)
-                            edge_color = edge_color_lookup[(neighbour, node)] if (neighbour, node) in edge_color_lookup else edge_color_lookup[(node, neighbour)]
-                            if edge_color == "blue":
-                                ## Upon blue edge discovery, add entire clique and anchor as a MCS (clique is extension of A)
-                                MCSs.append(clique + A)
-                                blue_edge_found = True
-                                break
-                    ## pursue next clique if this one already has a blue edge
-                    if blue_edge_found: break
+
+        ## For each clique, create the induced subgraph concatenated with the anchor
+        ## do BFS on this new graph, removing all nodes that are not reachable by a blue edge from the anchor
+        for comp_clique in component_cliques:
+            bfs_graph = nx.Graph(nx.induced_subgraph(PG, A + comp_clique))
+            node_color_lookup = {node: 'w' for node in bfs_graph.nodes}
+            edge_color_lookup = nx.get_edge_attributes(bfs_graph, "color")
+            source = A[0]
+            Q = Queue()
+            Q.put(source)
+            while not Q.empty():
+                u = Q.get()
+                neighbours = bfs_graph.adj[u]
+                for v in neighbours:
+                    if node_color_lookup[v] == "w":
+                        edge_color = edge_color_lookup[(u, v)] if (u, v) in edge_color_lookup else edge_color_lookup[(v, u)]                    
+                        ## Don't consider nodes that are reached by red edges
+                        if edge_color == "blue":
+                            node_color_lookup[v] = "g"
+                            Q.put(v)
+                node_color_lookup[u] = "b"
+            
+            reachable_nodes = [node for node in comp_clique if node_color_lookup[node] == 'b']
+            MCSs.append(reachable_nodes + A)
+
+
         return MCSs
 
     n_graphs = len(L)
@@ -402,74 +411,10 @@ def mcs_list_leviBarrowBurstall(L, edge_anchor, limit_pg=True, molecule=False):
         return edge_anchor
     else:
         MCSs = connected_MCS(listN, mod_product_graph, anchor_points, color_dictionary)
-        print(f"Mcs: {MCSs}")
-
-        ## UNION DISJOINT BLUE CLIQUES
-        anchor_amt = len(anchor_points)
-        cliques_amt = len(MCSs)
-        union_map = {i: set([i]) for i in range(cliques_amt)}
-        for i in range(cliques_amt):
-            ## Go through all points in the clique excluding the anchor point
-            clique_i = MCSs[i]
-
-            for j in range(i + 1, cliques_amt):
-                clique_j = MCSs[j]
-                has_conflict = False
-
-                ## Only consider non-anchor-nodes in clique_i and clique_j
-                for k in range(len(clique_i) - anchor_amt):
-                    node_i = clique_i[k]                
-
-                    for l in range(len(clique_j) - anchor_amt):
-                        node_j = clique_j[l]
-
-                        if not node_i == node_j:
-                            for m in range(n_graphs):
-                                if node_i[m] == node_j[m]: 
-                                    has_conflict = True
-                                    break          ## break out of coordinate comparison
-                        if has_conflict: break  ## break out of node
-                    if has_conflict: break ## break out of clique
-
-                ## clique 'i' and 'j' can be unioned
-                if not has_conflict:
-                    union_map[i].add(j)
-                    union_map[j].add(i)
-        max_union = len(union_map[max(union_map, key=lambda k: len(union_map[k]))])
-        clique_subsets = []
-        ## Compute combinations up to the lenght of the maximum "available for union" list for a clique.
-        for i in range(1, max_union + 1):
-            clique_subsets.extend(combinations(range(cliques_amt), i))
-
-        ## Compute largest unionable sets of cliques
-        to_union = []
-        for subset in reversed(clique_subsets):
-            subset_as_set = set(subset)
-            is_included = False 
-            ## Check if it's a subset of a larger union, in that case we don't need to look at it
-            for union in to_union:
-                if subset_as_set.issubset(union): 
-                    is_included = True
-                    break
-            
-            if not is_included:
-                to_intersect = [union_map[i] for i in subset]
-                res = union_map[subset[0]].intersection(*to_intersect)
-                if res == subset_as_set:
-                    to_union.append(res)
-
-        print(f"to union list: {to_union}")
-        extended_MCSs = []
-        for unifiables in to_union:
-            initial_set = set()
-            for indices in unifiables:
-                initial_set = initial_set.union(set(MCSs[indices]))
-            print(f"The resulting set: {initial_set}")
-            extended_MCSs.append(list(initial_set))
 
         all_mappings = []
         ## list of clique extensions
-        for mappings in extended_MCSs:
+        for mappings in MCSs:
             current_mapping = {}
             for tuples in mappings:
                 L_0 = edge_lists[0][tuples[0]]
