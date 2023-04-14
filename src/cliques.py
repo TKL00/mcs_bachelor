@@ -411,8 +411,6 @@ def mcs_list_leviBarrowBurstall(L, edge_anchor, limit_pg=True, molecule=False):
     for nodes in anchor_points:
         common_neighbours_N = [value for value in common_neighbours_N if value in mod_product_graph.adj[nodes].keys()]
 
-    # for key in color_dictionary:
-    #     print(f"Edge: {key} is \"{color_dictionary[key]}\"")
     listN = blue_component_filter(mod_product_graph, common_neighbours_N, anchor_points, color_dictionary)
 
     ## If no components exist, the anchor is the MCS
@@ -456,13 +454,23 @@ def iterative_approach(L, anchored_edges, limit_pg=True, molecule=False):
         mcs = mcs_list_leviBarrowBurstall([graph_one, graph_two], new_anchor, limit_pg, molecule)
 
         for found_mapping in mcs:
-            ## Add no new mapping if mapping is equal to anchor point
-            if len(found_mapping) > anchor_bound:          
-                ## ADD LABELS
-                current_mcs_graph = nx.Graph()
+            ## Only add extensions of the anchor
+            if len(found_mapping) > anchor_bound:  
+                ## Create copy for each mapping to recurse on
+                new_current_mapping = copy.deepcopy(current_mapping) 
+                
+                ## Create induced graph to potentially to recurse on
+                current_mcs_graph = nx.Graph()   
+                nodes_to_add = set()
+                for key in found_mapping:
+                    (u, v) = key
+                    nodes_to_add.add(u)
+                    nodes_to_add.add(v)
+                nodes_to_add = sorted(list(nodes_to_add))
+                current_mcs_graph.add_nodes_from(nodes_to_add)    
                 current_mcs_graph.add_edges_from(sorted([key for key in found_mapping]))
 
-                # Inhert labels from current mcs
+                # Inherit labels from current mcs
                 if molecule:
                     atom_types = nx.get_node_attributes(graph_one, "atom_type")
                     bond_types = nx.get_edge_attributes(graph_one, "bond_type")
@@ -472,8 +480,8 @@ def iterative_approach(L, anchored_edges, limit_pg=True, molecule=False):
                 for keys in found_mapping:
                     ## Update the current mapping to include this found mapping, and update this mapping to track previous mappings including itself
                     if keys in current_mapping: 
-                        current_mapping[keys].append(found_mapping[keys][0])
-                        found_mapping[keys] = current_mapping[keys]
+                        new_current_mapping[keys].append(found_mapping[keys][0])
+                        found_mapping[keys] = new_current_mapping[keys]
                 ## Continue recursively
                 _iterative_approach_rec(L, current_mcs_graph, to_mcs_graph + 1, all_mappings, found_mapping, anchor_bound, anchor, graph_amt, limit_pg, molecule)
 
@@ -490,6 +498,14 @@ def iterative_approach(L, anchored_edges, limit_pg=True, molecule=False):
 
         current_mcs_graph = nx.Graph()
         ## Create edge-induced graph based on the given mapping
+        ## circumvent the issue of out-of-order edges
+        nodes_to_add = set()
+        for key in mappings:
+            (u, v) = key
+            nodes_to_add.add(u)
+            nodes_to_add.add(v)
+        nodes_to_add = sorted(list(nodes_to_add))
+        current_mcs_graph.add_nodes_from(nodes_to_add)
         current_mcs_graph.add_edges_from(sorted([key for key in mappings]))
         if molecule:
             atom_types = nx.get_node_attributes(graph_one, "atom_type")
@@ -519,24 +535,26 @@ def all_products(L, anchored_edges, limit_pg=True, molecule=False):
 if __name__ == "__main__":
 
     propanic_acid = propanic_acid()
-    glucose = glucose()
-    caffeine = caffeine()
+    methanic_acid = methane_acid()
+    methanol = methanol()
+    # glucose = glucose()
+    # caffeine = caffeine()
 
     molecule_edge_anchor = {
-        (1, 2): [(1, 2), (0, 23)]
+        (2, 4): [(0, 2), (0, 1)]
     }
 
-    graph_list = [propanic_acid, glucose, caffeine]
+    graph_list = [propanic_acid, methanic_acid, methanol]
 
     print(f"\t\t\t\t\t\t\t\t\t\t\t\tAll products")
     molecule_subgraph = all_products(graph_list, molecule_edge_anchor, molecule=True)
-    for mapping in molecule_subgraph:
-        print(f"Resulting mapping: {mapping}")
+    # for mapping in molecule_subgraph:
+    #     print(f"Resulting mapping: {mapping}")
 
-    print(f"\t\t\t\t\t\t\t\t\t\t\t\tAll List")
-    molecule_subgraph_list = iterative_approach(graph_list, molecule_edge_anchor, molecule=True)
-    print(f"Result: {molecule_subgraph_list}")
-    for mapping in molecule_subgraph_list:
-        print(f"Resulting mapping: {mapping}")
+    # print(f"\t\t\t\t\t\t\t\t\t\t\t\tAll List")
+    # molecule_subgraph_list = iterative_approach(graph_list, molecule_edge_anchor, molecule=True)
+    # print(f"Result: {molecule_subgraph_list}")
+    # for mapping in molecule_subgraph_list:
+    #     print(f"Resulting mapping: {mapping}")
     
-    draw_molecules([propanic_acid, glucose, caffeine], molecule_subgraph,molecule_edge_anchor)
+    draw_molecules(graph_list, molecule_subgraph,molecule_edge_anchor)
