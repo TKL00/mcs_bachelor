@@ -174,19 +174,8 @@ def draw_molecules(L, mappings, edge_anchor):
     n_graphs = len(L)
     n_rows = math.ceil(n_graphs / 2)
 
-    bond_color = {
-        "s" : "black",
-        "d" : "royalblue",
-        "t" : "green",
-        "q" : "deeppink" 
-    }
-    edge_colors = []
     for i in range(n_graphs):
         graph = L[i]
-        edge_color_map = {edge: bond_color[bond_types[i][edge]] for edge in graph.edges}
-        edge_colors.append(edge_color_map)
-
-    
 
     ## Draw each mapping separately
     for mapping in mappings:
@@ -230,12 +219,15 @@ def draw_molecules(L, mappings, edge_anchor):
                     nx.draw_networkx_edges(graph, position, [edge], width=4.25, edge_color="white", ax=ax)
                     nx.draw_networkx_edges(graph, position, [edge], width=1.6, edge_color="black", ax=ax)
 
-                ## quadruple bond
-                else:
+                elif edge_bond_type == "q":
                     nx.draw_networkx_edges(graph, position, [edge], width=10, edge_color="black", ax=ax)
                     nx.draw_networkx_edges(graph, position, [edge], width=7, edge_color="white", ax=ax)
                     nx.draw_networkx_edges(graph, position, [edge], width=4, edge_color="black", ax=ax)
                     nx.draw_networkx_edges(graph, position, [edge], width=1.00, edge_color="white", ax=ax)
+                
+                ## aromatic bond
+                else:
+                    nx.draw_networkx_edges(graph, position, [edge], width=3, edge_color="black", ax=ax, style="--")
             
             ## Draw mapped edge labels
             label_iterator = 0
