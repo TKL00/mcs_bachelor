@@ -60,8 +60,8 @@ def convert_edge_anchor_lg_list(L, edge_anchor):
 
     ``Parameters``:
         L (list (Graph)): A list of networkX graphs
-        edge_anchor (dict: edge -> [edge]): A dictionary mapping edges from L[0] to all edges in in their edge list (all of these edges are
-                                            transitively and symmetrically mapped) 
+        edge_anchor (list: list(edge)): A list of lists of edges. In edge_anchor[l], all edges are mapped to each other.
+                                        edge_anchor[l][i] is an edge from graph L[i].
 
     ``Returns``:
         node_map ( dict: node -> list(node) ): The mapping from node in L[0] to nodes in the line graphs L[i] for i > 0.
@@ -73,19 +73,8 @@ def convert_edge_anchor_lg_list(L, edge_anchor):
     ## list of edge lists from all graphs in L
     edgelist = [list(L[i].edges) for i in range(n_graphs)]
 
-    for keys in edge_anchor:
-        L_0_edge = keys
-        L_0_edge_index = edgelist[0].index(L_0_edge)
-        mapped_nodes = edge_anchor[L_0_edge]
-        mappings = []
-        for graphs in range(1, n_graphs):
-            ## find node index of the current edge in the mapping
-            L_i_edge = mapped_nodes[graphs - 1]
-            L_i_edge_index = edgelist[graphs].index(L_i_edge)
-            mappings.append(L_i_edge_index)
-
-        ## map the L[0] edge index (which is the node number in the line graph) to the list of nodes
-        node_map[L_0_edge_index] = mappings
+    ## Transform each [(u, v), (a, b), (x, y)] into [node_i, node_j, node_k] for every l
+    node_map = [ [ edgelist[i].index(l[i]) for i in range(n_graphs)] for l in edge_anchor]
 
     return node_map
 

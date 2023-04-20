@@ -196,11 +196,8 @@ def draw_molecules(L, mappings, edge_anchor):
             position = nx.spring_layout(graph, seed=101)
 
             ## Highlight anchored edges
-            for keys in edge_anchor:
-                if graph_index == 0:
-                    edge_to_draw = [keys]
-                else:
-                    edge_to_draw = [edge_anchor[keys][graph_index - 1]]
+            for lists in edge_anchor:
+                edge_to_draw = [lists[graph_index]]
                 nx.draw_networkx_edges(graph, position, edge_to_draw, width=8, edge_color="gray", alpha=0.3, ax=ax)
             
             ## Draw each edge individually, color is based on their bond type
@@ -231,11 +228,8 @@ def draw_molecules(L, mappings, edge_anchor):
             
             ## Draw mapped edge labels
             label_iterator = 0
-            for edge in mapping:
-                if graph_index == 0:
-                    label = {edge: label_string[label_iterator]}
-                else:
-                    label = {mapping[edge][graph_index-1]: label_string[label_iterator]}
+            for lists in mapping:
+                label = {lists[graph_index]: label_string[label_iterator]}
                 nx.draw_networkx_edge_labels(graph, position, label, ax=ax, font_color="lightseagreen", font_family="calibri", font_size=15)
                 label_iterator += 1
 

@@ -106,23 +106,25 @@ if __name__ == "__main__":
     convert_labels(mol_3)
 
 
-    edge_anchor = {
-        (110, 111): [(6, 10), (10, 11)],
-        (37, 111): [(5, 6), (0, 11)],
-        (37, 64): [(5, 14), (0, 1)],
-        (64, 110): [(10, 14), (1, 10)]
-    }
+    edge_anchor = [
+        [(110, 111), (6, 10), (10, 11)],
+        [(37, 111), (5, 6), (0, 11)],
+        [(37, 64), (5, 14), (0, 1)],
+        [(64, 110), (10, 14), (1, 10)]
+    ]
 
 
     res_iterative = iterative_approach([union_graph, mol_3, water_fdp], edge_anchor=edge_anchor, molecule=True)
     print("Iterative done")
-    res_mass = mcs_list_leviBarrowBurstall([union_graph, mol_3, water_fdp], edge_anchor=edge_anchor, molecule=True)
-    print("Mass, done")
+    # res_mass = mcs_list_leviBarrowBurstall([union_graph, mol_3, water_fdp], edge_anchor=edge_anchor, molecule=True)
+    # print("Mass, done")
 
-    # filtered_res_iterative = []
-    # for val in res_iterative:
-    #     if val not in filtered_res_iterative:
-    #         filtered_res_iterative.append(val)
+    filtered_res_iterative = []
+    for val in res_iterative:
+        if val not in filtered_res_iterative:
+            filtered_res_iterative.append(val)
+
+    print(len(filtered_res_iterative))
 
     # filtered_res_mass = []
     # for val in res_mass:
@@ -133,8 +135,8 @@ if __name__ == "__main__":
 
 
     # iterator = 0
-    # for val in res_mass:
+    # for val in filtered_res_iterative:
     #     print(f"val: {val}")
-    #     # draw_molecules([union_graph, mol_3, water_fdp], [val], edge_anchor)
-    #     # iterator += 1
-    #     # if iterator == 10: break
+    #     draw_molecules([union_graph, mol_3, water_fdp], [val], edge_anchor)
+    #     iterator += 1
+    #     if iterator == 10: break

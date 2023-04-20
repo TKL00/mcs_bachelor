@@ -386,10 +386,10 @@ def mcs_list_leviBarrowBurstall(L, edge_anchor, limit_pg=True, molecule=False):
 
     linegraphs = [lg(L[i], molecule=molecule) for i in range(n_graphs)]
 
-    ## Mapping: v in L[0] -> u in [L[1] for i > 0]
+    ## List of anchor nodes in the linegraphs
     computed_node_anchor = convert_edge_anchor_lg_list(L, edge_anchor)
     ## Unfold anchor nodes in the modular product graph
-    anchor_nodes =  [ (v, *computed_node_anchor[v]) for v in computed_node_anchor]
+    anchor_nodes =  [ tuple(v) for v in computed_node_anchor]
     
     ## Compute product graph, either constraining it to only include A and N, or include all possible nodes.
     mod_product_graph = pgl(linegraphs, anchor_nodes, molecule=molecule) if limit_pg else pgnl(linegraphs)
@@ -397,39 +397,33 @@ def mcs_list_leviBarrowBurstall(L, edge_anchor, limit_pg=True, molecule=False):
     ## If no nodes are added, |anchor| = 1 and N = Ø. If product graph only contains 
     ## anchor nodes (|anchor| >= 2), then N = Ø.
     if not mod_product_graph.nodes or anchor_nodes == mod_product_graph.nodes:
-        return [edge_anchor]
+        return edge_anchor
 
     ## Mapping edges in the product graph to their color
     color_dictionary = nx.get_edge_attributes(mod_product_graph, "color")
 
-    ## Anchor points in product graph correspond to (v_1, v_2, ..., v_n) nodes where 
-    ## v_0 is a node in L[0] and v_i is a node in L[i]. Folding out the list of mappings.
-    anchor_points = [ (l_zero, *computed_node_anchor[l_zero]) for l_zero in computed_node_anchor ]
-
     ## computing N by intersecting all neighbours among the anchor points (NOTE: possible optimization when computing the intersection)
-    common_neighbours_N = list(mod_product_graph.adj[anchor_points[0]].keys())
-    for nodes in anchor_points:
+    common_neighbours_N = list(mod_product_graph.adj[anchor_nodes[0]].keys())
+    for nodes in anchor_nodes:
         common_neighbours_N = [value for value in common_neighbours_N if value in mod_product_graph.adj[nodes].keys()]
 
-    listN = blue_component_filter(mod_product_graph, common_neighbours_N, anchor_points, color_dictionary)
+    listN = blue_component_filter(mod_product_graph, common_neighbours_N, anchor_nodes, color_dictionary)
 
     ## If no components exist, the anchor is the MCS
     if len(listN) == 0:
-        return [edge_anchor]
+        return edge_anchor
     else:
-        MCSs = connected_MCS(listN, mod_product_graph, anchor_points, color_dictionary)
+        MCSs = connected_MCS(listN, mod_product_graph, anchor_nodes, color_dictionary)
 
         all_mappings = []
-        ## list of clique extensions
+        ## list of clique extensions (i.e. list of list of tuples)
         for mappings in MCSs:
-            current_mapping = {}
+            current_mapping = []
             for tuples in mappings:
-                L_0 = edge_lists[0][tuples[0]]
-                mapped_edges = []
-                for i in range(1, n_graphs):
-                    mapped_edges.append(edge_lists[i][tuples[i]])
-                ## v -> [x_2, x_3, ..., x_n]
-                current_mapping[L_0] = mapped_edges
+                ## (i.e. one tuple of the form (a, b, c, d, ..., z)) up to the number of graphs
+                ## tranformed into their corresponding edge in the graph
+                mapped_edges = [edge_lists[i][tuples[i]] for i in range(n_graphs)]
+                current_mapping.append(mapped_edges)
             all_mappings.append(current_mapping)
         return all_mappings
 
@@ -448,7 +442,7 @@ def iterative_approach(L, edge_anchor, limit_pg=True, molecule=False):
         graph_two = L[to_mcs_graph]
 
         ## Map edges from current best graph to the upcoming "to_mcs_graph"
-        new_anchor = {key: [anchor[key][to_mcs_graph - 1]] for key in anchor}
+        new_anchor = [ [lists[0], lists[to_mcs_graph] ] for lists in anchor ]
 
         mcs = mcs_list_leviBarrowBurstall([graph_one, graph_two], new_anchor, limit_pg, molecule)
 
@@ -457,17 +451,17 @@ def iterative_approach(L, edge_anchor, limit_pg=True, molecule=False):
             if len(found_mapping) > anchor_bound:  
                 ## Create copy for each mapping to recurse on
                 new_current_mapping = copy.deepcopy(current_mapping) 
-                
+
                 ## Create induced graph to potentially to recurse on
                 current_mcs_graph = nx.Graph()   
                 nodes_to_add = set()
-                for key in found_mapping:
-                    (u, v) = key
+                for edge_list in found_mapping:
+                    (u, v) = edge_list[0]
                     nodes_to_add.add(u)
                     nodes_to_add.add(v)
                 nodes_to_add = sorted(list(nodes_to_add))
                 current_mcs_graph.add_nodes_from(nodes_to_add)    
-                current_mcs_graph.add_edges_from(sorted([key for key in found_mapping]))
+                current_mcs_graph.add_edges_from(sorted([edge_list[0] for edge_list in found_mapping]))
 
                 # Inherit labels from current mcs
                 if molecule:
@@ -476,36 +470,43 @@ def iterative_approach(L, edge_anchor, limit_pg=True, molecule=False):
                     nx.set_node_attributes(current_mcs_graph, atom_types, "atom_type")
                     nx.set_edge_attributes(current_mcs_graph, bond_types, "bond_type")
                 ## Update the found mapping with the previously found mapped edges
-                for keys in found_mapping:
+
+                continue_mapping = []
+                for i in range(len(found_mapping)):
+                    edge_list = found_mapping[i]
                     ## Update the current mapping to include this found mapping, and update this mapping to track previous mappings including itself
-                    if keys in current_mapping: 
-                        new_current_mapping[keys].append(found_mapping[keys][0])
-                        found_mapping[keys] = new_current_mapping[keys]
+                    for j in range(len(current_mapping)):
+                        current_map = current_mapping[j]
+                        ## update those lists that include already mapped edges
+                        if edge_list[0] == current_map[0]: 
+                            ## add newly mapped member to old list of mapped members
+                            new_current_mapping[j].append(edge_list[1])
+                            ## only move those mapped edges forward with newly mapped edges
+                            continue_mapping.append(new_current_mapping[j])
                 ## Continue recursively
-                _iterative_approach_rec(L, current_mcs_graph, to_mcs_graph + 1, all_mappings, found_mapping, anchor_bound, anchor, graph_amt, limit_pg, molecule)
+                _iterative_approach_rec(L, current_mcs_graph, to_mcs_graph + 1, all_mappings, continue_mapping, anchor_bound, anchor, graph_amt, limit_pg, molecule)
 
     ## Use anchor_size as guard in the recursive step, terminating branches that reach this length
     anchor_size = len(edge_anchor)
     mapping_list = []
-    ## Map L[0] to [L[1]] as initial anchor
-    start_anchor = {key: [edge_anchor[key][0]] for key in edge_anchor}
+    ## Map L[0] edges to L[1] edges as initial anchor
+    start_anchor = [ [lists[0], lists[1]] for lists in edge_anchor]
     graph_one = L[0]
     graph_two = L[1]
 
     mcs = mcs_list_leviBarrowBurstall([graph_one, graph_two], start_anchor, limit_pg, molecule)
     for mappings in mcs:
-
         current_mcs_graph = nx.Graph()
         ## Create edge-induced graph based on the given mapping
         ## circumvent the issue of out-of-order edges
         nodes_to_add = set()
-        for key in mappings:
-            (u, v) = key
+        for edge_list in mappings:
+            (u, v) = edge_list[0]
             nodes_to_add.add(u)
             nodes_to_add.add(v)
         nodes_to_add = sorted(list(nodes_to_add))
         current_mcs_graph.add_nodes_from(nodes_to_add)
-        current_mcs_graph.add_edges_from(sorted([key for key in mappings]))
+        current_mcs_graph.add_edges_from(sorted([edge_list[0] for edge_list in mappings]))
         if molecule:
             atom_types = nx.get_node_attributes(graph_one, "atom_type")
             bond_types = nx.get_edge_attributes(graph_one, "bond_type")
@@ -517,7 +518,7 @@ def iterative_approach(L, edge_anchor, limit_pg=True, molecule=False):
 
     ## If nothing was added to the mapping list along the way, the anchor is the only common subgraph
     if not mapping_list:
-        mapping_list = [edge_anchor]
+        mapping_list = edge_anchor
 
     return mapping_list
 
@@ -595,23 +596,23 @@ if __name__ == "__main__":
     # glucose = glucose()
     # caffeine = caffeine()
 
-    molecule_edge_anchor = {
-        (2, 4): [(0, 2), (0, 1)]
-    }
+    molecule_edge_anchor = [ [(2, 4), (0, 2), (0, 1)] ]
 
     graph_list = [propanic_acid, methanic_acid, methanol]
 
     print(f"\t\t\t\t\t\t\t\t\t\t\t\tAll products")
-    molecule_subgraph = all_products(graph_list, molecule_edge_anchor, molecule=True)
+    # molecule_subgraph = all_products(graph_list, molecule_edge_anchor, molecule=True)
+
+    # print(molecule_subgraph)
     # for mapping in molecule_subgraph:
     #     print(f"Resulting mapping: {mapping}")
 
     # print(f"\t\t\t\t\t\t\t\t\t\t\t\tAll List")
-    # molecule_subgraph_list = iterative_approach(graph_list, molecule_edge_anchor, molecule=True)
-    # print(f"Result: {molecule_subgraph_list}")
+    molecule_subgraph_list = iterative_approach(graph_list, molecule_edge_anchor, molecule=True)
+    print(f"Result: {molecule_subgraph_list}")
     # for mapping in molecule_subgraph_list:
     #     print(f"Resulting mapping: {mapping}")
     
-    draw_molecules(graph_list, molecule_subgraph,molecule_edge_anchor)
+    # draw_molecules(graph_list, molecule_subgraph,molecule_edge_anchor)
 
     # yadayada
