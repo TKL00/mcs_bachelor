@@ -579,7 +579,9 @@ def compute_anchor(Gs, AEs, molecule=False):
         
         ## g_edge_types now contains a list of dictionaries, one for each g in Gs
 
+    
     init_edge_type_dict = g_edge_types[0]
+    print(g_edge_types)
     for edge_types in init_edge_type_dict:
         ## find all combinations of mapped edges for one 
         edge_type_combinations = []                
