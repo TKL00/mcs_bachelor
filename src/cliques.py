@@ -230,7 +230,7 @@ def mcs_list_leviBarrowBurstall(L, edge_anchor, limit_pg=True, molecule=False):
 
             H (Graph): A NetworkX graph, nodes are integers but may be decorated with items
 
-            edge_anchor (dict: edge -> list(edge)): A valid one-to-one mapping from 'n' edges in G to 'n' edges in H, overrules a given node_anchor
+            edge_anchor (list: list(edge)): A valid one-to-one mapping from 'n' edges in G to 'n' edges in H, overrules a given node_anchor
 
         `Optional`:
             limit_pg (boolean): Indicates whether the product graph should be limited to the neighbourhood of anchors or not, default to true
