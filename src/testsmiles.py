@@ -1,7 +1,7 @@
 from pysmiles import read_smiles
 import networkx as nx
 from matplotlib import pyplot as plt
-from cliques import mcs_list_leviBarrowBurstall, iterative_approach
+from cliques import mcs_list_leviBarrowBurstall, iterative_approach, compute_anchor
 from draw_graphs import draw_molecules
 
 def merge_graphs_from_smiles(smiles_list):
@@ -113,18 +113,27 @@ if __name__ == "__main__":
         [(64, 110), (10, 14), (1, 10)]
     ]
 
+    compute_anchor([union_graph, mol_3, water_fdp], [[(110, 111), (37, 111), (37, 64), (64, 110)], [(6, 10), (5, 6), (5, 14), (10, 14)], [(10,11), (0, 11), (0, 1), (1, 10)]], molecule=True)
 
-    res_iterative = iterative_approach([union_graph, mol_3, water_fdp], edge_anchor=edge_anchor, molecule=True)
-    print("Iterative done")
-    # res_mass = mcs_list_leviBarrowBurstall([union_graph, mol_3, water_fdp], edge_anchor=edge_anchor, molecule=True)
-    # print("Mass, done")
+    # res_iterative = iterative_approach([union_graph, mol_3, water_fdp], edge_anchor=edge_anchor, molecule=True)
+    # print("Iterative done")
+    # # res_mass = mcs_list_leviBarrowBurstall([union_graph, mol_3, water_fdp], edge_anchor=edge_anchor, molecule=True)
+    # # print("Mass, done")
 
-    filtered_res_iterative = []
-    for val in res_iterative:
-        if val not in filtered_res_iterative:
-            filtered_res_iterative.append(val)
+    # sorted_res_iterative = [sorted(val) for val in res_iterative]
 
-    print(len(filtered_res_iterative))
+
+
+    # filtered_res_iterative = []
+    # for val in sorted_res_iterative:
+    #     if val not in filtered_res_iterative:
+    #         filtered_res_iterative.append(val)
+
+    # print(len(filtered_res_iterative))
+
+    # max_length = max([len(val) for val in filtered_res_iterative])
+    # max_map = [val for val in filtered_res_iterative if len(val) == max_length]
+    # draw_molecules([union_graph, mol_3, water_fdp], [max_map[0]], edge_anchor)
 
     # filtered_res_mass = []
     # for val in res_mass:

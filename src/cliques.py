@@ -534,14 +534,14 @@ def all_products(L, edge_anchor, limit_pg=True, molecule=False):
 def compute_anchor(Gs, AEs, molecule=False):
     """
         Gs: List of graphs
-        AEs: List of anchored edges. AEs[i] -> anchored edges in Gs[i]
+        AEs: List of anchored edges (list of edges). AEs[i] -> anchored edges in Gs[i]
     """
 
     # def _compute_anchor(edge_type, edge_type_list, current_choice):
 
 
     n_graphs = len(Gs)
-    n_anchored_edges = len(AEs[i])
+    n_anchored_edges = len(AEs[0])
     anchors = []
     ## g_edge_types[i] is a dictionary from g_i edge types in anchor to
     ## the anchor edges of this type
@@ -560,7 +560,7 @@ def compute_anchor(Gs, AEs, molecule=False):
             for j in range(n_anchored_edges):
                 ## An anchor edge_j in G_i
                 (u, v) = anchors[j]
-                atom_pair = set([g_atom_type[u], g_atom_type[v]])
+                atom_pair = tuple(sorted((g_atom_type[u], g_atom_type[v])))
                 ## Ignore networkX edge ordering problems
                 try:
                     bond_type = g_bond_type[(u, v)]
@@ -581,6 +581,7 @@ def compute_anchor(Gs, AEs, molecule=False):
 
     init_edge_type_dict = g_edge_types[0]
     for edge_types in init_edge_type_dict:
+        ## find all combinations of mapped edges for one 
         edge_type_combinations = []                
 
     ## all combinations
@@ -600,7 +601,9 @@ if __name__ == "__main__":
 
     graph_list = [propanic_acid, methanic_acid, methanol]
 
-    print(f"\t\t\t\t\t\t\t\t\t\t\t\tAll products")
+    compute_anchor(graph_list, [[(2,4)], [(0,2)], [(0, 1)]], molecule=True)
+
+    # print(f"\t\t\t\t\t\t\t\t\t\t\t\tAll products")
     # molecule_subgraph = all_products(graph_list, molecule_edge_anchor, molecule=True)
 
     # print(molecule_subgraph)
@@ -608,8 +611,8 @@ if __name__ == "__main__":
     #     print(f"Resulting mapping: {mapping}")
 
     # print(f"\t\t\t\t\t\t\t\t\t\t\t\tAll List")
-    molecule_subgraph_list = iterative_approach(graph_list, molecule_edge_anchor, molecule=True)
-    print(f"Result: {molecule_subgraph_list}")
+    # molecule_subgraph_list = iterative_approach(graph_list, molecule_edge_anchor, molecule=True)
+    # print(f"Result: {molecule_subgraph_list}")
     # for mapping in molecule_subgraph_list:
     #     print(f"Resulting mapping: {mapping}")
     
