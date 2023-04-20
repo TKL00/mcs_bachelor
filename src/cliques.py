@@ -433,8 +433,7 @@ def mcs_list_leviBarrowBurstall(L, edge_anchor, limit_pg=True, molecule=False):
             all_mappings.append(current_mapping)
         return all_mappings
 
-
-def iterative_approach(L, anchored_edges, limit_pg=True, molecule=False):
+def iterative_approach(L, edge_anchor, limit_pg=True, molecule=False):
     """
         L: List of graphs
     """
@@ -486,10 +485,10 @@ def iterative_approach(L, anchored_edges, limit_pg=True, molecule=False):
                 _iterative_approach_rec(L, current_mcs_graph, to_mcs_graph + 1, all_mappings, found_mapping, anchor_bound, anchor, graph_amt, limit_pg, molecule)
 
     ## Use anchor_size as guard in the recursive step, terminating branches that reach this length
-    anchor_size = len(anchored_edges)
+    anchor_size = len(edge_anchor)
     mapping_list = []
     ## Map L[0] to [L[1]] as initial anchor
-    start_anchor = {key: [anchored_edges[key][0]] for key in anchored_edges}
+    start_anchor = {key: [edge_anchor[key][0]] for key in edge_anchor}
     graph_one = L[0]
     graph_two = L[1]
 
@@ -514,22 +513,78 @@ def iterative_approach(L, anchored_edges, limit_pg=True, molecule=False):
             nx.set_node_attributes(current_mcs_graph, atom_types, "atom_type")
             nx.set_edge_attributes(current_mcs_graph, bond_types, "bond_type")
 
-        _iterative_approach_rec(L, current_mcs_graph, 2, mapping_list, copy.deepcopy(mappings), anchor_size, anchored_edges, len(L), limit_pg, molecule)
+        _iterative_approach_rec(L, current_mcs_graph, 2, mapping_list, copy.deepcopy(mappings), anchor_size, edge_anchor, len(L), limit_pg, molecule)
 
     ## If nothing was added to the mapping list along the way, the anchor is the only common subgraph
     if not mapping_list:
-        mapping_list = [anchored_edges]
+        mapping_list = [edge_anchor]
 
     return mapping_list
 
-def all_products(L, anchored_edges, limit_pg=True, molecule=False):
+def all_products(L, edge_anchor, limit_pg=True, molecule=False):
     """
         L: List of graphs
     """
 
-    subgraphs = mcs_list_leviBarrowBurstall(L, anchored_edges, limit_pg, molecule)
+    subgraphs = mcs_list_leviBarrowBurstall(L, edge_anchor, limit_pg, molecule)
 
     return subgraphs
+
+def compute_anchor(Gs, AEs, molecule=False):
+    """
+        Gs: List of graphs
+        AEs: List of anchored edges. AEs[i] -> anchored edges in Gs[i]
+    """
+
+    # def _compute_anchor(edge_type, edge_type_list, current_choice):
+
+
+    n_graphs = len(Gs)
+    n_anchored_edges = len(AEs[i])
+    anchors = []
+    ## g_edge_types[i] is a dictionary from g_i edge types in anchor to
+    ## the anchor edges of this type
+    g_edge_types = []
+
+    ## combinations are limited based on edge type
+    if molecule:
+        ## Compute g_edge_types
+        for i in range(n_graphs):
+            g = Gs[i]
+            anchors = AEs[i]
+            ## Mapping edge types to list of edges
+            g_edge_type_map = {}
+            g_atom_type = nx.get_node_attributes(g, "atom_type")
+            g_bond_type = nx.get_edge_attributes(g, "bond_type") 
+            for j in range(n_anchored_edges):
+                ## An anchor edge_j in G_i
+                (u, v) = anchors[j]
+                atom_pair = set([g_atom_type[u], g_atom_type[v]])
+                ## Ignore networkX edge ordering problems
+                try:
+                    bond_type = g_bond_type[(u, v)]
+                except:
+                    bond_type = g_bond_type[(v, u)]
+                
+                ## edges are identified by unique atom_pair and bond type
+                edge_type = (atom_pair, bond_type)
+                ## If edge type not discovered yet, add the key and value
+                if edge_type not in g_edge_type_map:
+                    g_edge_type_map[edge_type] = [(u, v)]
+                ## otherwise add to list
+                else:
+                    g_edge_type_map[edge_type].append((u, v))
+            g_edge_types.append(g_edge_type_map)
+        
+        ## g_edge_types now contains a list of dictionaries, one for each g in Gs
+
+    init_edge_type_dict = g_edge_types[0]
+    for edge_types in init_edge_type_dict:
+        edge_type_combinations = []                
+
+    ## all combinations
+    else:
+        return []
 
 
 if __name__ == "__main__":
@@ -558,3 +613,5 @@ if __name__ == "__main__":
     #     print(f"Resulting mapping: {mapping}")
     
     draw_molecules(graph_list, molecule_subgraph,molecule_edge_anchor)
+
+    # yadayada
