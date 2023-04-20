@@ -93,13 +93,13 @@ if __name__ == "__main__":
                            })
     convert_labels(water_fdp)    
 
-    # node_labels = {node: str(node) + nx.get_node_attributes(water_fdp, "atom_type")[node] for node in water_fdp.nodes}
+        # node_labels = {node: str(node) + nx.get_node_attributes(water_fdp, "atom_type")[node] for node in water_fdp.nodes}
 
-    # pos = nx.spring_layout(water_fdp, seed=101)
-    # nx.draw_networkx_edges(water_fdp, pos, water_fdp.edges)
-    # nx.draw_networkx_nodes(water_fdp, pos, water_fdp.nodes)
-    # nx.draw_networkx_labels(water_fdp, pos, labels=node_labels)
-    # plt.show()
+        # pos = nx.spring_layout(water_fdp, seed=101)
+        # nx.draw_networkx_edges(water_fdp, pos, water_fdp.edges)
+        # nx.draw_networkx_nodes(water_fdp, pos, water_fdp.nodes)
+        # nx.draw_networkx_labels(water_fdp, pos, labels=node_labels)
+        # plt.show()
 
 
     convert_labels(union_graph)
@@ -114,7 +114,7 @@ if __name__ == "__main__":
     }
 
 
-    res_iterative = iterative_approach([union_graph, mol_3, water_fdp], anchored_edges=edge_anchor, molecule=True)
+    res_iterative = iterative_approach([union_graph, mol_3, water_fdp], edge_anchor=edge_anchor, molecule=True)
     print("Iterative done")
     res_mass = mcs_list_leviBarrowBurstall([union_graph, mol_3, water_fdp], edge_anchor=edge_anchor, molecule=True)
     print("Mass, done")
