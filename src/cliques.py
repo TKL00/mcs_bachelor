@@ -1,3 +1,4 @@
+import itertools
 from productgraph import product_graph_no_limit as pgnl
 from productgraph import product_graph_limit as pgl
 from linegraph import line_graph as lg
@@ -535,16 +536,16 @@ def compute_anchor(Gs, AEs, molecule=False):
     """
         Gs: List of graphs
         AEs: List of anchored edges (list of edges). AEs[i] -> anchored edges in Gs[i]
+
+        Returns: A list of anchors (list of lists of edges mapped together)        
+
     """
 
-    # def _compute_anchor(edge_type, edge_type_list, current_choice):
-
-
+    computed_anchors = []
     n_graphs = len(Gs)
     n_anchored_edges = len(AEs[0])
-    anchors = []
-    ## g_edge_types[i] is a dictionary from g_i edge types in anchor to
-    ## the anchor edges of this type
+    ## g_edge_types[i] is a dictionary from edge types in anchor to
+    ## the anchor edges of this type in g_i
     g_edge_types = []
 
     ## combinations are limited based on edge type
@@ -579,13 +580,56 @@ def compute_anchor(Gs, AEs, molecule=False):
         
         ## g_edge_types now contains a list of dictionaries, one for each g in Gs
 
-    
-    init_edge_type_dict = g_edge_types[0]
-    print(g_edge_types)
-    for edge_types in init_edge_type_dict:
-        ## find all combinations of mapped edges for one 
-        edge_type_combinations = []                
+        ## Save the first dictionary for graph 0 to retrieve attributes
+        init_edge_type_dict = g_edge_types[0]
 
+        ## List of all possible edge types e.g. (('O', 'P'), 's'), (('H', 'O), 'd')
+        possible_edge_types = [key for key in init_edge_type_dict]
+        ## Number of edges of the different types
+        n_edge_type_edges = {key: len(init_edge_type_dict[key]) for key in init_edge_type_dict}
+        n_edge_types = len(possible_edge_types)
+        edge_type_options = {}
+
+        ## Compute all combinations of edges of the same edge type across all graphs
+        for edge_type in possible_edge_types:
+            n_edges_of_type = n_edge_type_edges[edge_type]          
+            indices = [i for i in range(n_edges_of_type)]
+            
+            permutations_of_indices = []
+            for j in range(n_graphs):
+                permutations_of_indices.append(list(itertools.permutations(indices)))
+            
+            ## list of tuples, each tuple being a mapping of an edge type ((x, y), (a, b), (u, v)) where x -> a -> u and y -> b -> v, no one is mapped to the same node.
+            mappings_of_edge_type = list(itertools.product(*permutations_of_indices))
+            edge_type_options[edge_type] = mappings_of_edge_type
+            
+        all_edge_type_map_combinations = list(itertools.product(*edge_type_options.values()))
+
+        ## Each combination tuple corresponds to (x, y, ..) where x is a mapping of edge type 0 in all graphs, y is a mapping of all edges of type 1 and so on.
+        ## That is, each tuple is an anchor option.
+        for combinations in all_edge_type_map_combinations:
+            new_anchor = []
+            ## Each combination has tuples for each edge type in the order of edges in possible_edge_types
+            for i in range(n_edge_types):
+                current_edge_type = possible_edge_types[i]
+                edge_type_tuple = combinations[i]
+
+                ## Each contains the number of edges for the given edge type
+                for j in range(n_edge_type_edges[current_edge_type]):
+                    edges_mapped_together = []
+                    
+                    ## Each edge must, for all graphs, be mapped to an edge of that type in that graph
+                    for k in range(n_graphs):
+                        current_graph_tuple = edge_type_tuple[k]
+                        g_edge = g_edge_types[k][current_edge_type][current_graph_tuple[j]]
+                        edges_mapped_together.append(g_edge)
+                    
+                    new_anchor.append(edges_mapped_together)
+                    
+            computed_anchors.append(new_anchor)
+        
+        return computed_anchors
+        
     ## all combinations
     else:
         return []
