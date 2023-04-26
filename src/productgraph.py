@@ -67,12 +67,15 @@ def product_graph_no_limit(L):
 def product_graph_limit(L, anchor_nodes, molecule=False):
     """
         Computes the modular product of all NetworkX graphs contained in L.
-        lg_node_anchor maps a node, u, of L[0] to all nodes, v_i, of lg_node_anchor[u] .
         With that, node lg_node_anchor[u][0] is also mapped to lg_node_anchpr[u][1] ... and so forth.
 
         Additionally, the product graph nodes are filtered with respect to the lg_node_anchor. Only nodes
         connected to an anchor point by a red/blue edge will be included. Blue/red edges among added
         nodes are also included.
+
+        `Parameters`:
+            L: List of line graphs
+            anchor_nodes: list of anchor nodes in the product graph of the form (v_1, v_2, ..., v_n)
 
         `Returns`:
             product_graph (Graph): A NetworkX graph that contains anchor nodes and all nodes connected to anchor. If the 
