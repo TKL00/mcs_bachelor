@@ -47,7 +47,6 @@ def convert_graph_file(path):
             ## If the string is "New Instance" the current graph is completed and needs to be saved
             ## and preparing to create next graph
             if(string == "---New Instance---\n"):
-                print(f"Inside the new instance")
                 ## Save current graph
                 nx.set_node_attributes(G, node_attribute_dict)
                 nx.set_edge_attributes(G, edge_attribute_dict)
@@ -64,7 +63,6 @@ def convert_graph_file(path):
             ## If string "###" is read, the nodes for the current graph has been read and the edges comes after.
             elif(string == "###\n"):
                 reading_nodes = False
-                print("in ###")
             
             else: 
                 ## Adding nodes
@@ -77,7 +75,6 @@ def convert_graph_file(path):
                 else:
                     string_split = string.split(" ")
                     edge = (int(string_split[0]), int(string_split[1]))
-                    #print(f"adding edge: {edge}")
                     G.add_edge(int(string_split[0]), int(string_split[1]))
                     ## Checking if edge is an anchor edge
                     if(string_split[2] == "anchor"):
