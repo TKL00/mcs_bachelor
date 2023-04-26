@@ -3,11 +3,13 @@ from productgraph import product_graph_limit as pgl
 from linegraph import line_graph as lg
 from linegraph import convert_edge_anchor_lg_list
 from itertools import chain
+import graph_format
 import networkx as nx
 from queue import Queue
 import copy
 from draw_graphs import draw_product_graph, draw_two_graphs, draw_blue_connected_components, draw_molecules
 from molecules import *
+import time
 
 
 ### Authors: Tobias Klink Lehn (toleh20@student.sdu.dk) and Kasper Halkjær Beider (kbeid20@student.sdu.dk)
@@ -141,7 +143,6 @@ def mcs_list_leviBarrowBurstall(L, edge_anchor, limit_pg=True, molecule=False):
         blue_component_graph = nx.Graph(nx.induced_subgraph(PG, chain(*listN)))
         component_cliques = list(nx.find_cliques(blue_component_graph))
 
-
         ## For each clique, create the induced subgraph concatenated with the anchor
         ## do BFS on this new graph, removing all nodes that are not reachable by a blue edge from the anchor
         for comp_clique in component_cliques:
@@ -188,7 +189,7 @@ def mcs_list_leviBarrowBurstall(L, edge_anchor, limit_pg=True, molecule=False):
     ## If no nodes are added, |anchor| = 1 and N = Ø. If product graph only contains 
     ## anchor nodes (|anchor| >= 2), then N = Ø.
     if not mod_product_graph.nodes or anchor_nodes == mod_product_graph.nodes:
-        return edge_anchor
+        return [edge_anchor]
 
     ## Mapping edges in the product graph to their color
     color_dictionary = nx.get_edge_attributes(mod_product_graph, "color")
@@ -202,7 +203,7 @@ def mcs_list_leviBarrowBurstall(L, edge_anchor, limit_pg=True, molecule=False):
 
     ## If no components exist, the anchor is the MCS
     if len(listN) == 0:
-        return edge_anchor
+        return [edge_anchor]
     else:
         MCSs = connected_MCS(listN, mod_product_graph, anchor_nodes, color_dictionary)
 
@@ -309,7 +310,7 @@ def iterative_approach(L, edge_anchor, limit_pg=True, molecule=False):
 
     ## If nothing was added to the mapping list along the way, the anchor is the only common subgraph
     if not mapping_list:
-        mapping_list = edge_anchor
+        mapping_list = [edge_anchor]
 
     return mapping_list
 
@@ -324,31 +325,35 @@ def all_products(L, edge_anchor, limit_pg=True, molecule=False):
 
 if __name__ == "__main__":
 
-    propanic_acid = propanic_acid()
-    methanic_acid = methane_acid()
-    methanol = methanol()
-    # glucose = glucose()
-    # caffeine = caffeine()
+    graphs, anchors = graph_format.convert_graph_file("../out.txt")
+    all_anchors = graph_format.compute_anchor(graphs, anchors, molecule=True)
 
-    molecule_edge_anchor = [ [(2, 4), (0, 2), (0, 1)] ]
+    graph_one_atoms = nx.get_node_attributes(graphs[0], "atom_type")
+    graph_one_bonds = nx.get_edge_attributes(graphs[0], "bond_type")
 
-    graph_list = [propanic_acid, methanic_acid, methanol]
-
-    # compute_anchor(graph_list, [[(2,4)], [(0,2)], [(0, 1)]], molecule=True)
-
-    # print(f"\t\t\t\t\t\t\t\t\t\t\t\tAll products")
-    # molecule_subgraph = all_products(graph_list, molecule_edge_anchor, molecule=True)
-
-    # print(molecule_subgraph)
-    # for mapping in molecule_subgraph:
-    #     print(f"Resulting mapping: {mapping}")
-
-    # print(f"\t\t\t\t\t\t\t\t\t\t\t\tAll List")
-    # molecule_subgraph_list = iterative_approach(graph_list, molecule_edge_anchor, molecule=True)
-    # print(f"Result: {molecule_subgraph_list}")
-    # for mapping in molecule_subgraph_list:
-    #     print(f"Resulting mapping: {mapping}")
+    graph_two_atoms = nx.get_node_attributes(graphs[1], "atom_type")
+    graph_two_bonds = nx.get_edge_attributes(graphs[1], "bond_type")
     
-    # draw_molecules(graph_list, molecule_subgraph,molecule_edge_anchor)
+    # print("graph one")
+    # for i in graph_one_atoms: print(i, graph_one_atoms[i])
+    # for i in graph_one_bonds: print(i, graph_one_bonds[i])
+    # print("graph two")
+    # for i in graph_two_atoms: print(i, graph_two_atoms[i])
+    # for i in graph_two_bonds: print(i, graph_two_bonds[i])
+    trial_graphs = [graphs[1], graphs[2], graphs[0], graphs[3]]
+    trial_anchors = [anchors[1], anchors[2], anchors[0], anchors[3]]
+    # fail_anchor = [[(53, 54), (10, 14), (0, 1), (5, 14)], [(54, 123), (5, 14), (1, 10), (6, 14)], [(123, 124), (6, 10), (10, 11), (6, 7)], [(53, 124), (5, 6), (0, 11), (5, 7)]]
+    trial_all_anchors = graph_format.compute_anchor(trial_graphs, trial_anchors, molecule=True)
 
-    # yadayada
+    # iterative_approach(trial_graphs, edge_anchor=fail_anchor, molecule=True)
+
+    for trial_anchor in trial_all_anchors:
+        print(f"anchor {trial_anchor}")
+        time_before = time.time()
+        res_iterative = iterative_approach(trial_graphs, edge_anchor=trial_anchor, molecule=True)
+        time_after = time.time()
+        print(res_iterative)
+        print(f"Time taken: {time_after - time_before}")
+        
+        
+    print(len(all_anchors))
