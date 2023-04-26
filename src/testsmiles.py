@@ -1,7 +1,8 @@
 from pysmiles import read_smiles
 import networkx as nx
 from matplotlib import pyplot as plt
-from cliques import mcs_list_leviBarrowBurstall, iterative_approach, compute_anchor
+from cliques import mcs_list_leviBarrowBurstall, iterative_approach
+from convert_graph import compute_anchor
 from draw_graphs import draw_molecules
 
 def merge_graphs_from_smiles(smiles_list):
@@ -113,12 +114,17 @@ if __name__ == "__main__":
         [(64, 110), (10, 14), (1, 10)]
     ]
 
-    compute_anchor([union_graph, mol_3, water_fdp], [[(110, 111), (37, 111), (37, 64), (64, 110)], [(6, 10), (5, 6), (5, 14), (10, 14)], [(10,11), (0, 11), (0, 1), (1, 10)]], molecule=True)
+    anchors = compute_anchor([union_graph, mol_3, water_fdp], [[(110, 111), (37, 111), (37, 64), (64, 110)], [(6, 10), (5, 6), (5, 14), (10, 14)], [(10,11), (0, 11), (0, 1), (1, 10)]], molecule=True)
+    print(len(anchors))
 
-    # res_iterative = iterative_approach([union_graph, mol_3, water_fdp], edge_anchor=edge_anchor, molecule=True)
+    for anchor in anchors:
+        res_iterative = iterative_approach([union_graph, mol_3, water_fdp], edge_anchor=anchor, molecule=True)
+        print("done")
+
+    
     # print("Iterative done")
-    # # res_mass = mcs_list_leviBarrowBurstall([union_graph, mol_3, water_fdp], edge_anchor=edge_anchor, molecule=True)
-    # # print("Mass, done")
+    # res_mass = mcs_list_leviBarrowBurstall([union_graph, mol_3, water_fdp], edge_anchor=edge_anchor, molecule=True)
+    # print("Mass, done")
 
     # sorted_res_iterative = [sorted(val) for val in res_iterative]
 
