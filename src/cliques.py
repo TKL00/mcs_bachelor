@@ -4,10 +4,11 @@ from linegraph import line_graph as lg
 from linegraph import convert_edge_anchor_lg_list
 from itertools import chain
 import graph_format
+import numpy as np
 import networkx as nx
 from queue import Queue
 import copy
-from draw_graphs import draw_product_graph, draw_two_graphs, draw_blue_connected_components, draw_molecules
+from draw_graphs import draw_product_graph, draw_graphs, draw_blue_connected_components, draw_molecules
 from molecules import *
 import time
 
@@ -237,8 +238,14 @@ def iterative_approach(L, edge_anchor, limit_pg=True, molecule=False):
         new_anchor = [ [lists[0], lists[to_mcs_graph] ] for lists in anchor ]
 
         mcs = mcs_list_leviBarrowBurstall([graph_one, graph_two], new_anchor, limit_pg, molecule)
-
-        for found_mapping in mcs:
+        
+        ## Filter duplicates, no need to branch multiple times for identical mappings
+        filtered_mcs = []
+        for l in mcs:
+            if sorted(l) not in filtered_mcs:
+                filtered_mcs.append(sorted(l))
+                
+        for found_mapping in filtered_mcs:
             ## Only add extensions of the anchor
             if len(found_mapping) > anchor_bound:  
                 ## Create copy for each mapping to recurse on
@@ -287,7 +294,14 @@ def iterative_approach(L, edge_anchor, limit_pg=True, molecule=False):
     graph_two = L[1]
 
     mcs = mcs_list_leviBarrowBurstall([graph_one, graph_two], start_anchor, limit_pg, molecule)
-    for mappings in mcs:
+    
+    ## Filter duplicates, no need to branch multiple times for identical mappings
+    filtered_mcs = []
+    for l in mcs:
+        if sorted(l) not in filtered_mcs:
+            filtered_mcs.append(sorted(l))
+
+    for mappings in filtered_mcs:
         current_mcs_graph = nx.Graph()
         ## Create edge-induced graph based on the given mapping
         ## circumvent the issue of out-of-order edges
@@ -325,35 +339,43 @@ def all_products(L, edge_anchor, limit_pg=True, molecule=False):
 
 if __name__ == "__main__":
 
-    graphs, anchors = graph_format.convert_graph_file("../out.txt")
-    all_anchors = graph_format.compute_anchor(graphs, anchors, molecule=True)
-
-    graph_one_atoms = nx.get_node_attributes(graphs[0], "atom_type")
-    graph_one_bonds = nx.get_edge_attributes(graphs[0], "bond_type")
-
-    graph_two_atoms = nx.get_node_attributes(graphs[1], "atom_type")
-    graph_two_bonds = nx.get_edge_attributes(graphs[1], "bond_type")
+    print("tihi")
     
-    # print("graph one")
-    # for i in graph_one_atoms: print(i, graph_one_atoms[i])
-    # for i in graph_one_bonds: print(i, graph_one_bonds[i])
-    # print("graph two")
-    # for i in graph_two_atoms: print(i, graph_two_atoms[i])
-    # for i in graph_two_bonds: print(i, graph_two_bonds[i])
-    trial_graphs = [graphs[1], graphs[2], graphs[0], graphs[3]]
-    trial_anchors = [anchors[1], anchors[2], anchors[0], anchors[3]]
-    # fail_anchor = [[(53, 54), (10, 14), (0, 1), (5, 14)], [(54, 123), (5, 14), (1, 10), (6, 14)], [(123, 124), (6, 10), (10, 11), (6, 7)], [(53, 124), (5, 6), (0, 11), (5, 7)]]
-    trial_all_anchors = graph_format.compute_anchor(trial_graphs, trial_anchors, molecule=True)
+    # N_GRAPHS = 3
+    # Gs = []
+    # anchors = []
+    # for i in range(N_GRAPHS):
+    #     g = nx.dense_gnm_random_graph(10, 15)
+    #     Gs.append(g)
+    #     anchor_num = np.random.randint(len(g.edges))
+    #     g_edges = list(g.edges)
+    #     anchor_edge = g_edges[anchor_num]
+    #     anchors.append(anchor_edge)
+    
+    # print("entered iterative approach")
+    # res = iterative_approach(Gs, [anchors], limit_pg=True)
+    # print("done finding MCS")
+    # max_extension = max([len(r) for r in res])
+    # filtered_res = list(filter(lambda l: len(l) == max_extension, res))
 
-    # iterative_approach(trial_graphs, edge_anchor=fail_anchor, molecule=True)
+    # print(filtered_res)
+    # print(f"anchor: {anchors}")
 
-    for trial_anchor in trial_all_anchors:
-        print(f"anchor {trial_anchor}")
+    # draw_graphs(Gs, [filtered_res[0]], [anchors])
+            
+        
+        
+    # print(len(all_anchors))
+
+    graphs, anchors = graph_format.convert_graph_file("../out.txt")
+    test_graphs = [graphs[2], graphs[1], graphs[0], graphs[3]]
+    test_anchors = graph_format.compute_anchor(test_graphs, [anchors[2], anchors[1], anchors[0], anchors[3]], molecule=True)
+    
+
+    for anchor in test_anchors:
         time_before = time.time()
-        res_iterative = iterative_approach(trial_graphs, edge_anchor=trial_anchor, molecule=True)
+        res_iterative = iterative_approach(test_graphs, anchor, molecule=True)
         time_after = time.time()
-        print(res_iterative)
-        print(f"Time taken: {time_after - time_before}")
+        print(f"time spent: {time_after-time_before} seconds")
+
         
-        
-    print(len(all_anchors))
