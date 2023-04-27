@@ -225,5 +225,4 @@ def product_graph_limit(L, anchor_nodes, molecule=False):
                 elif all_agree_not_adj:
                     product_graph.add_edge( node_i, node_j, color="red")
     
-        
     return product_graph
