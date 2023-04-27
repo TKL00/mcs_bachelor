@@ -54,57 +54,66 @@ def draw_product_graph(G, H, PGH):
 
     plt.show()
 
-def draw_two_graphs(G, H, mapped_edges={}, edge_anchor={}):
+def draw_graphs(L, mappings, edge_anchor):
     """
-        Draws two NetworkX graphs next to each other.
+        Draws graphs in L in a grid with two columns and appropriate amount of rows.
+        Highlights edge_anchor by grey edges, labels the edges based on the mappings.
     """
-    G_pos = nx.spring_layout(G, seed=101)
-    H_pos = nx.spring_layout(H, seed=101)
-    G_node_labels = {}
-    H_node_labels = {}
-    G_edge_labels = {}
-    H_edge_labels = {}
 
-    ## String used for edges mapped to each other
-    label_string="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    label_string = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
-    for nodes in G.nodes:
-        G_node_labels[nodes] = nodes
+    n_graphs = len(L)
+    n_rows = math.ceil(n_graphs / 2)
 
-    for nodes in H.nodes:
-        H_node_labels[nodes] = nodes
+    for i in range(n_graphs):
+        graph = L[i]
 
-    if mapped_edges:
-        iterator = 0
-        for G_edge in mapped_edges:
-            G_edge_labels[G_edge] = label_string[iterator]
-            H_edge_labels[mapped_edges[G_edge]] = label_string[iterator]
-            iterator += 1
-    
-    print(G_edge_labels)
-    print(G.edges)
+    ## Draw each mapping separately
+    for mapping in mappings:
+        fig, axs = plt.subplots(ncols=2, nrows=n_rows)
+        graph_index = 0
 
-    subax1 = plt.subplot(121)
-    subax1.set_title("G")
-    nx.draw_networkx_nodes(G, G_pos, nodelist=G.nodes)
-    nx.draw_networkx_labels(G, G_pos, G_node_labels, font_size=15, font_color="whitesmoke")
-    nx.draw_networkx_edges(G, G_pos, edgelist=G.edges)
-    if edge_anchor:
-        nx.draw_networkx_edges(G, G_pos, edgelist=[edge for edge in edge_anchor], edge_color="tab:orange", width=2)
-    if mapped_edges:
-        nx.draw_networkx_edge_labels(G, G_pos, G_edge_labels, font_color="tab:red")
-    
-    subax2 = plt.subplot(122)
-    subax2.set_title("H")
-    nx.draw_networkx_nodes(H, H_pos, nodelist=H.nodes)
-    nx.draw_networkx_labels(H, H_pos, H_node_labels, font_size=15, font_color="whitesmoke")
-    nx.draw_networkx_edges(H, H_pos, edgelist=H.edges)
-    if edge_anchor:
-        nx.draw_networkx_edges(H, H_pos, edgelist=[edge_anchor[edge] for edge in edge_anchor], edge_color="tab:orange", width=2)
-    if mapped_edges:
-        nx.draw_networkx_edge_labels(H, H_pos, H_edge_labels, font_color="tab:red")     
-    
-    plt.show()
+        for ax in axs.flat:
+            ## Remove border
+            ax.spines['top'].set_visible(False)
+            ax.spines['right'].set_visible(False)
+            ax.spines['bottom'].set_visible(False)
+            ax.spines['left'].set_visible(False)
+            if graph_index == n_graphs: break
+            ax.set_title(f"Graph {graph_index}")
+
+            
+            graph = L[graph_index]
+            node_labels = {i: i for i in graph.nodes}
+            position = nx.spring_layout(graph, seed=101)
+
+            ## Highlight anchored edges
+            for lists in edge_anchor:
+                edge_to_draw = [lists[graph_index]]
+                print(f"edge to draw {edge_to_draw}")
+                nx.draw_networkx_edges(graph, position, edge_to_draw, width=8, edge_color="gray", alpha=0.3, ax=ax)
+            
+            ## Draw each edge individually, color is based on their bond type
+            for edge in graph.edges:
+                nx.draw_networkx_edges(graph, position, [edge], width=1.0, edge_color="black", ax=ax)
+            
+            ## Draw mapped edge labels
+            label_iterator = 0
+            for lists in mapping:
+                label = {lists[graph_index]: label_string[label_iterator]}
+                print(f"label: {label}")
+                nx.draw_networkx_edge_labels(graph, position, label, ax=ax, font_color="lightseagreen", font_family="calibri", font_size=15)
+                label_iterator += 1
+
+            
+            # ## Draw nodes and atom labels
+            nx.draw_networkx_nodes(graph, position, graph.nodes, node_size=175, node_color="tab:blue", ax=ax)
+            nx.draw_networkx_labels(graph, position, labels=node_labels, ax=ax)
+            graph_index += 1
+
+        ## Remove x- and y-axis
+        plt.axis('off')
+        plt.show()
     
 def draw_blue_connected_components(PG, anchor, blue_components, color_map):
 
@@ -161,7 +170,7 @@ def draw_blue_connected_components(PG, anchor, blue_components, color_map):
 
 def draw_molecules(L, mappings, edge_anchor):
     """
-        Draws "molecule" graps in L in a grid with two columns and appropriate amount of rows.
+        Draws "molecule" graphs in L in a grid with two columns and appropriate amount of rows.
         Highlights edge_anchor by grey edges, labels the edges based on the mappings.
     """
 
@@ -242,6 +251,8 @@ def draw_molecules(L, mappings, edge_anchor):
         ## Remove x- and y-axis
         plt.axis('off')
         plt.show()
+
+
 
 
 ## MCGREGOR DRAWINGS
