@@ -482,3 +482,14 @@ def draw_mcgregor_mcs_lgs(G, H, LG, LH, mapping, marcs, edge_anchor={}):
     
 
     plt.show()
+
+
+def draw_one_graph(G):
+
+    G_pos = nx.spring_layout(G, seed=101)
+    nx.draw_networkx_nodes(G, G_pos, nodelist=G.nodes, node_color="tab:blue")
+    nx.draw_networkx_labels(G, G_pos, {i:i for i in G.nodes}, font_size=15, font_color="whitesmoke")
+    nx.draw_networkx_edges(G, G_pos, width=1.0, alpha=0.75)
+    nx.draw_networkx_edge_labels(G, G_pos, {i:i for i in G.edges}, font_color="lightseagreen")
+
+    plt.show()
