@@ -1,6 +1,10 @@
 import networkx as nx
 import itertools
 
+
+"""
+    Methods for reading Daniel/Dennis files.
+"""
 def switch_bond_type(input):
     """Switch function to convert the bond type from given data to our format
     Args:
