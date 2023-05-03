@@ -73,6 +73,8 @@ def mcs_mcgregor(G, H, anchor_point={}):
                                     arcsleft -= 1
         return arcsleft
     
+    ## NOTE: Er det her overhovedet nødvendigt længere? Det var vel kun et problem, da vi lavede linjegrafer, hvilket var virkelig lol?
+    ## + det faktum, at delgrafen er kantinduceret.
     def is_legal_pair(g_node, h_node, G, H, mapping):
         """
             Determines whether the g_node in G can be successfully mapped to the h_node in H. g_node can be mapped to h_node
@@ -207,6 +209,7 @@ def mcs_mcgregor(G, H, anchor_point={}):
             
             arcsleft = update_MARCS(MARCS, v_edges, x_edges, killed_edges, MARCS_row_ones, arcsleft)
 
+            ## NOTE: Skal dette ikke ændres til > end nu i følge McGregors artikel? Vi vil jo gerne finde den STØRSTE.
             ## If the number of edges to be mapped is 'high', we either build further down the branch
             ## or save the current mapping if in a leaf node.
             if arcsleft >= bestarcsleft:        ## == comes from building all MCS, even ones where arcsleft are equal
@@ -246,6 +249,8 @@ def mcs_mcgregor(G, H, anchor_point={}):
             while v in anchor_point and v > first_non_anchor:
                 v -= 1
             
+            ## NOTE: Skal vi ikke kun retunere den "mindste" til sidst, hvis vi skal sammenligne fuldstændigt?
+            ## NOTE: Tænker det er det værd, hvis vi vil prøve at sammenligne vores LeviBurstall m. den her for to grafer.
             ## If the algorithm has backtracked past the first non anchor point it means
             ## there are only anchor points left, therefore the algorithm stops.
             if v < first_non_anchor:
