@@ -338,8 +338,6 @@ def all_products(L, edge_anchor, limit_pg=True, molecule=False):
     return subgraphs
 
 if __name__ == "__main__":
-
-    print("tihi")
     
     # N_GRAPHS = 3
     # Gs = []
@@ -376,6 +374,19 @@ if __name__ == "__main__":
         time_before = time.time()
         res_iterative = iterative_approach(test_graphs, anchor, molecule=True)
         time_after = time.time()
+        
+        map_lengths = max([len(i) for i in res_iterative])
+        max_mapping = list(filter(lambda x: len(x) == map_lengths, res_iterative))
+
+        if map_lengths == 11:
+            draw_molecules(test_graphs, [max_mapping[0]], anchor)
+
+        print(f"Max extension: {map_lengths}")
+        print(f"Number of extensions: {len(res_iterative)}")
+        print(f"Number of extensions of max size: {len(max_mapping)}")
         print(f"time spent: {time_after-time_before} seconds")
+        print()
+        
+        
 
         
