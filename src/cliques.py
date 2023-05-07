@@ -20,11 +20,10 @@ def mcs_list_leviBarrowBurstall(L, edge_anchor, limit_pg=True, molecule=False):
         G. Levi and H.G. Barrow + R.M. Burstall in 1973 and 1975 respectively.
         
         `Paramters`:
-            G (Graph): A NetworkX graph, nodes are integers but may be decorated with items
+            L (list(Graph)): A list of networkX graphs.
 
-            H (Graph): A NetworkX graph, nodes are integers but may be decorated with items
-
-            edge_anchor (list: list(edge)): A valid one-to-one mapping from 'n' edges in G to 'n' edges in H, overrules a given node_anchor
+            edge_anchor (list: list(edge)): A valid one-to-one between edges in the graphs in L. An element X in the edge_anchor 
+                                            is thus a list of edges, where X[i] is an edge in L[i]. All edges in X are mapped to each other.
 
         `Optional`:
             limit_pg (boolean): Indicates whether the product graph should be limited to the neighbourhood of anchors or not, default to true
@@ -33,7 +32,8 @@ def mcs_list_leviBarrowBurstall(L, edge_anchor, limit_pg=True, molecule=False):
                                 attribute "atom_type" on nodes and "bond_type" on edges. 
         
         `Returns`:
-            all_mappings (list( dict: node -> node) or list( dict: edge -> edge)): 
+            all_mappings (list( list (list(edge))): Lists of mapping. That is, each element in all_mappings is a list of edge mappings between the graphs
+                                                    following the same format as edge_anchor.
             
             A valid mapping from nodes in G to nodes in H if a node_anchor was given.
             Otherwise, a mapping from edges in G to edges in H.
