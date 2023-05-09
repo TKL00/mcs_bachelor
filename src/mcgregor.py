@@ -248,7 +248,6 @@ def mcs_mcgregor(G, H, edge_anchor=[], molecule=False):
             
             arcsleft = update_MARCS(MARCS, v_edges, x_edges, killed_edges, MARCS_row_ones, arcsleft)
 
-            ## NOTE: Skal dette ikke ændres til > end nu i følge McGregors artikel? Vi vil jo gerne finde den STØRSTE.
             ## If the number of edges to be mapped is 'high', we either build further down the branch
             ## or save the current mapping if in a leaf node.
             if arcsleft > bestarcsleft:        ## == comes from building all MCS, even ones where arcsleft are equal
