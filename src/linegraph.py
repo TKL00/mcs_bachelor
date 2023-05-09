@@ -54,6 +54,7 @@ def line_graph(G, molecule=False):
 
     return LG
 
+## used in Cliques
 def convert_edge_anchor_lg_list(L, edge_anchor):
     """
     Computes the node_anchor of the line graphs made from the graphs in L based on edge_anchor.
@@ -64,7 +65,7 @@ def convert_edge_anchor_lg_list(L, edge_anchor):
                                         edge_anchor[l][i] is an edge from graph L[i].
 
     ``Returns``:
-        node_map ( dict: node -> list(node) ): The mapping from node in L[0] to nodes in the line graphs L[i] for i > 0.
+        node_map ( list (list: nodes) ): The mapping of nodes in the linegraphs. An element is thus a list of edges mapped to each other.
     """
 
     node_map = {}
@@ -78,46 +79,19 @@ def convert_edge_anchor_lg_list(L, edge_anchor):
 
     return node_map
 
-def convert_edge_anchor_lg(G, H, edge_anchor):
+## used in McGregor
+def convert_edge_anchor(edge_anchor):
     """
-    Assumes edge_anchor is from G_edge -> H_edge. Computes the node_anchor in line graphs of G and H by the given edge_anchor.
-    
-    ``Parameters``:
-
-    ``Returns``:
-        node_map ( dict: int -> int ): The mapping from node i to node j in the linegraph which corresponds to 
-                                       edge i and edge j in the original graphs.
+        Computes the list of anchored nodes in G and the list of anchored nodes in H.
     """
+    G_anchor = set()
+    H_anchor = set()
 
-    node_map = {}
-    G_edges = list(G.edges)
-    H_edges = list(H.edges)
-    for keys in edge_anchor:
-        G_edge = keys
-        H_edge = edge_anchor[keys]
-        LG_node = G_edges.index(G_edge)
-        LH_node = H_edges.index(H_edge)
-        node_map[LG_node] = LH_node
+    for i in range(len(edge_anchor)):
+        (u_1, v_1) = edge_anchor[i][0]
+        (u_2, v_2) = edge_anchor[i][1]
+        G_anchor.update([u_1, v_1])
+        H_anchor.update([u_2, v_2])
 
-    return node_map
 
-def convert_edge_anchor(G, H, edge_anchor):
-    """
-        Converts a given edge_anchor from G -> H into a node_anchor.
-        That is, if edge_anchor has an entry (i, j) -> (a, b) it entails the mapping {i: a, j: b}.
-        As a result, it is a precondition that the edge indices are sorted lexicographically to keep the
-        integrity of the node-mapping intact when several edges share the same node.
-
-        
-        ( e.x. (1, 3) -> (a, c) entails {1: a, 3: c} but having (1, 2) -> (b, a) later results in the final mapping {1: b, 2: a, 3: c}
-        when one wanted {1: a, 2: b, 3: c} )
-    """
-
-    node_anchor = {}
-    for g_edges in edge_anchor:
-        mapped_edge = edge_anchor[g_edges]
-
-        node_anchor[g_edges[0]] = mapped_edge[0]
-        node_anchor[g_edges[1]] = mapped_edge[1]
-
-    return node_anchor
+    return list(G_anchor), list(H_anchor)
