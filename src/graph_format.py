@@ -24,6 +24,14 @@ def switch_bond_type(input):
         return "s/d"
     elif input == "=-":
         return "d/s"
+    elif input == ":-":
+        return "a/s"
+    elif input == "-:":
+        return "s/a"
+    elif input == ":=":
+        return "a/d"
+    elif input == "=:":
+        return "d/a"
     else:
         return "q"
 
