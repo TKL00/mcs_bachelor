@@ -142,6 +142,7 @@ def mcs_list_leviBarrowBurstall(L, edge_anchor, limit_pg=True, molecule=False):
         MCSs = []
         ## Create node induced subgraph of the modular product graph containing all blue connected components
         blue_component_graph = nx.Graph(nx.induced_subgraph(PG, chain(*listN)))
+        print("blue_component_graph:", blue_component_graph)
         component_cliques = list(nx.find_cliques(blue_component_graph))
 
         ## For each clique, create the induced subgraph concatenated with the anchor
@@ -337,55 +338,46 @@ def all_products(L, edge_anchor, limit_pg=True, molecule=False):
 
     return subgraphs
 
-if __name__ == "__main__":
-    
-    # N_GRAPHS = 3
-    # Gs = []
-    # anchors = []
-    # for i in range(N_GRAPHS):
-    #     g = nx.dense_gnm_random_graph(10, 15)
-    #     Gs.append(g)
-    #     anchor_num = np.random.randint(len(g.edges))
-    #     g_edges = list(g.edges)
-    #     anchor_edge = g_edges[anchor_num]
-    #     anchors.append(anchor_edge)
-    
-    # print("entered iterative approach")
-    # res = iterative_approach(Gs, [anchors], limit_pg=True)
-    # print("done finding MCS")
-    # max_extension = max([len(r) for r in res])
-    # filtered_res = list(filter(lambda l: len(l) == max_extension, res))
 
-    # print(filtered_res)
-    # print(f"anchor: {anchors}")
+def test_graphs(Gs, As, seq, molecules=False):
 
-    # draw_graphs(Gs, [filtered_res[0]], [anchors])
-            
-        
-        
-    # print(len(all_anchors))
+    graph_seq = [Gs[i] for i in seq]
+    anchor_seq = [As[i] for i in seq]
 
-    graphs, anchors = graph_format.convert_graph_file("../out.txt")
-    test_graphs = [graphs[2], graphs[1], graphs[0], graphs[3]]
-    test_anchors = graph_format.compute_anchor(test_graphs, [anchors[2], anchors[1], anchors[0], anchors[3]], molecule=True)
-    
+    test_anchors = graph_format.compute_anchor(graph_seq, anchor_seq, molecule=molecules)
+    print(f"Number of computed anchors: {len(test_anchors)}")
 
     for anchor in test_anchors:
         time_before = time.time()
-        res_iterative = iterative_approach(test_graphs, anchor, molecule=True)
-        time_after = time.time()
+        res_iterative = iterative_approach(graph_seq, anchor, molecule=True)
+        time_after = time.time() 
         
         map_lengths = max([len(i) for i in res_iterative])
         max_mapping = list(filter(lambda x: len(x) == map_lengths, res_iterative))
 
-        if map_lengths == 11:
-            draw_molecules(test_graphs, [max_mapping[0]], anchor)
+        if map_lengths >= 8:
+            draw_molecules(graph_seq, [max_mapping[0]], anchor)
 
         print(f"Max extension: {map_lengths}")
         print(f"Number of extensions: {len(res_iterative)}")
         print(f"Number of extensions of max size: {len(max_mapping)}")
         print(f"time spent: {time_after-time_before} seconds")
         print()
+
+
+if __name__ == "__main__":          
+        
+    # print(len(all_anchors))
+
+    graphs, anchors = graph_format.convert_graph_file("../labelled_graphs/phosphogluconate_dehydrogenase.txt")
+    # print(len(graphs))
+    # test_graphs = [graphs[2], graphs[1], graphs[0], graphs[3]]
+    # test_anchors = graph_format.compute_anchor(test_graphs, [anchors[2], anchors[1], anchors[0], anchors[3]], molecule=True)
+    
+
+    test_graphs(graphs, anchors, [0, 1, 2, 3, 4], True)
+
+    
         
         
 
