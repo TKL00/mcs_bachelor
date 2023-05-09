@@ -4,11 +4,12 @@ import numpy as np
 from copy import deepcopy
 from workspace import Workspace
 from linegraph import line_graph as lg
-from linegraph import convert_edge_anchor_lg, convert_edge_anchor
-from draw_graphs import draw_mcgregor_mcs_lgs, draw_two_graphs, draw_mcgregor_mcs_graphs
+from linegraph import convert_edge_anchor
+from draw_graphs import draw_mcgregor_mcs_graphs
+import molecules as ml
 
 ### Authors: Tobias Klink Lehn (toleh20@student.sdu.dk) and Kasper Halkjær Beider (kbeid20@student.sdu.dk)
-def mcs_mcgregor(G, H, anchor_point={}):
+def mcs_mcgregor(G, H, edge_anchor=[], molecule=False):
     """
     Computes the Maximum Common Subgraph using the Algorithm suggested by
     James J. McGregor in 1982.
@@ -20,7 +21,7 @@ def mcs_mcgregor(G, H, anchor_point={}):
             H (Graph): A NetworkX graph, nodes are integers but may be decorated with items
 
         `Optional`:
-            anchor_point (dict: int -> int): A valid one-to-one mapping from 'n' nodes in G to 'n' nodes in H
+            anchor_point (dict: int -> int): A valid one-to-one mapping from ``n`` edges in G to ``n`` edgs in H.
         
         `Returns`:
             all_mappings (list: (mapping, marcs, arcsleft)) where arcsleft is maximum:
@@ -31,6 +32,19 @@ def mcs_mcgregor(G, H, anchor_point={}):
     If an anchor point is given (i.e. a subgraph isomorphism between G and H),
     the algorithm produces a common subgraph branching out from this anchor point.
     """
+
+    ## Initialization
+    G_node_amt, H_node_amt = len(G.nodes), len(H.nodes)
+    G_edge_amt, H_edge_amt = len(G.edges), len(H.edges)
+
+    assert G_node_amt <= H_node_amt, f"The number of nodes in first input graph {G_node_amt} is larger than the number of nodes in the second input graph {H_node_amt}"
+
+    if molecule:
+        G_atom_types, H_atom_types = nx.get_node_attributes(G, "atom_type"), nx.get_node_attributes(H, "atom_type")
+        G_bond_types, H_bond_types = nx.get_edge_attributes(G, "bond_type"), nx.get_edge_attributes(H, "bond_type")
+    else: 
+        G_atom_types, H_atom_types = {i: "" for i in G.nodes}, {i: "" for i in H.nodes}
+        G_bond_types, H_bond_types = {i: "" for i in G.edges}, {i: "" for i in H.edges}
 
     ## Auxiliary function
     def node_to_arc_matrix(G):
@@ -72,41 +86,70 @@ def mcs_mcgregor(G, H, anchor_point={}):
                                 if MARCS_row_ones[G_edge] == 0:
                                     arcsleft -= 1
         return arcsleft
-    
-    ## NOTE: Er det her overhovedet nødvendigt længere? Det var vel kun et problem, da vi lavede linjegrafer, hvilket var virkelig lol?
-    ## + det faktum, at delgrafen er kantinduceret.
-    def is_legal_pair(g_node, h_node, G, H, mapping):
-        """
-            Determines whether the g_node in G can be successfully mapped to the h_node in H. g_node can be mapped to h_node
-            if and only if edges from g_node in the current mapping correlates to edges from h_node in the current mapping.
-            That is, if h_node has an edge between itself and a node in the current subgraph of H but this edge doesn't exist between
-            g_node and that corresponding node in the subgraph G, g_node cannot be mapped to h_node.
-        """
-        g_neighbours = G.adj[g_node]
-        h_neighbours = H.adj[h_node] 
 
-        h_allowed_neighbours = []
-        for neighbour in g_neighbours:
-            ## only account for nodes in G that have been mapped to nodes in H
-            if mapping[neighbour] != "":
-                h_allowed_neighbours.append(mapping[neighbour])
+    def modify_MARCS_anchor(MARCS, H_mapped, G_anchor_nodes, H_anchor_nodes, current_mapping, MARCS_row_ones, arcsleft):
+        for G_node in G_anchor_nodes:
+            current_mapping[G_node] = "anchor"
+        for H_node in H_anchor_nodes:
+            H_mapped[H_node] = True
 
-        for neighbour in h_neighbours:
-            ## If the h_node's neighbour is a part of the current MCS in H
-            ## but this neighbour does not exist in G, a contradiction has been found.
-            ## The current node in H that the node in G is mapped to is ignored.
-            if mapping[g_node] != neighbour and neighbour in mapping.values() and neighbour not in h_allowed_neighbours:
-                return False
-        
-        return True 
+        ## refine MARCS such that no anchored edges can be mapped to anything
+        for anchors in edge_anchor:
+            G_edge = list(G.edges).index(anchors[0])
+            H_edge = list(H.edges).index(anchors[1])
 
-    ## Initialization
-    G_node_amt, H_node_amt = len(G.nodes), len(H.nodes)
-    G_edge_amt, H_edge_amt = len(G.edges), len(H.edges)
+            ## The anchor edge in G can only be mapped to the anchored edge in H (G row is set to 0 except for the anchor in H)
+            for i in range(H_edge_amt):
+                if i != H_edge:
+                    MARCS[G_edge][i] = 0
+            ## Only one cell with the H-edge remains a 1
+            MARCS_row_ones[G_edge] = 1
 
-    assert G_node_amt <= H_node_amt, f"The number of nodes in first input graph {G_node_amt} is larger than the number of nodes in the second input graph {H_node_amt}"
+            ## H-column is set to 0 except for the anchor in G
+            for i in range(G_edge_amt):
+                if i != G_edge:
+                    MARCS[i][H_edge] = 0
+                    MARCS_row_ones[i] -= 1 ## A single cell in each row has been changed to 0
+                    if MARCS_row_ones[i] == 0: arcsleft -= 1
+
+            ## Update such that only edges incident with u, v can be mapped to incident edges to r, s
+            (u, v) = anchors[0]
+            G_incident = list(G.edges(u)) + list(G.edges(v))
+
+            (r, s) = anchors[1]
+            H_incident = list(H.edges(r)) + list(H.edges(s))
+
+            ## For all incident edges to this given anchor in G, only incident edges to the anchor in H may be mapped.
+            for g_edge in G_incident:
+                (g1, g2) = g_edge
+                try:
+                    g_edge_index = list(G.edges).index((g1, g2))
+                except:
+                    g_edge_index = list(G.edges).index((g2, g1))
+                for i in range(H_edge_amt):
+                    (h1, h2) = list(H.edges)[i]
+                    if (h1, h2) not in H_incident and (h2, h1) not in H_incident:
+                        MARCS[g_edge_index][i] = 0
+                        MARCS_row_ones[g_edge_index] -= 1
+                        if MARCS_row_ones[g_edge_index] == 0: arcsleft -= 1
+            
+        return arcsleft
+
+    def modify_MARCS_bond_type(MARCS, MARCS_row_ones, arcsleft, G_bond_types, H_bond_types):
+        G_edges = list(G.edges)
+        H_edges = list(H.edges)
+        for i in range(G_edge_amt):
+            for j in range(H_edge_amt):
+                if G_bond_types[G_edges[i]] != H_bond_types[H_edges[j]]:
+                    MARCS[i][j] = 0
+                    MARCS_row_ones[i] -= 1
+                    if MARCS_row_ones[i] == 0:
+                        arcsleft -= 1
+        return arcsleft
 
     G_node_to_arc, H_node_to_arc = node_to_arc_matrix(G), node_to_arc_matrix(H)
+
+    G_anchor_nodes, H_anchor_nodes = convert_edge_anchor(edge_anchor)
 
     ## Initialize the ARC Matrix (q1 x q2) to be full of 1's (all arcs are compatible)
     MARCS = np.ones((G_edge_amt, H_edge_amt))
@@ -143,26 +186,22 @@ def mcs_mcgregor(G, H, anchor_point={}):
     arcsleft = G_edge_amt
 
     ## Modify initial MARCS if an anchor point is present to reflect the anchored edges.
-    if anchor_point:
-        for G_node in anchor_point:
-            mapped_node = anchor_point[G_node]
-            ## Take note that the mapping from G_node to mapped_node exists
-            ## in H_mapped and current_mapping.
-            H_mapped[mapped_node] = True
-            current_mapping[G_node] = mapped_node
-            v_edges = G_node_to_arc[G_node]
-            x_edges = H_node_to_arc[mapped_node]
-            
-            arcsleft = update_MARCS(MARCS, v_edges, x_edges, killed_edges, MARCS_row_ones, arcsleft)
-        
-        ## Reset killed edges as these are not supposed to be restored from the anchor point perspective.
-        killed_edges = []
+    if edge_anchor: 
+        arcsleft = modify_MARCS_anchor(MARCS, H_mapped, G_anchor_nodes, H_anchor_nodes, current_mapping, MARCS_row_ones, arcsleft)
+    ## If the graphs are labelled adjust MARCS such that already at the start it is not possible to map edges of differing
+    ## bond types.
 
+    if molecule:
+        arcsleft = modify_MARCS_bond_type(MARCS, MARCS_row_ones, arcsleft, G_bond_types, H_bond_types)
+    
+    print("initial marcs")
+    print(MARCS)
+        
     ## v in G, x in H
     v = 0
     x = None
     ## Find first node in G not a part of anchor point (lexicographic order)
-    while v in anchor_point:
+    while v in G_anchor_nodes:
         v += 1
 
     ## In case all nodes in G are anchored, the algorithm needs not to run.
@@ -179,7 +218,7 @@ def mcs_mcgregor(G, H, anchor_point={}):
         ## Finding a node x in H that has not already been mapped to.  
         ## Additionally, that node x in H has not been tried yet by node v in G
         for H_node in range(H_node_amt):
-            if not H_tried[v][H_node] and not H_mapped[H_node] and is_legal_pair(v, H_node, G, H, current_mapping):
+            if not H_tried[v][H_node] and not H_mapped[H_node] and G_atom_types[v] == H_atom_types[H_node]:
                 x = H_node
                 ## If v is currently mapped to a different node
                 ## update said node to no longer be mapped.
@@ -212,7 +251,7 @@ def mcs_mcgregor(G, H, anchor_point={}):
             ## NOTE: Skal dette ikke ændres til > end nu i følge McGregors artikel? Vi vil jo gerne finde den STØRSTE.
             ## If the number of edges to be mapped is 'high', we either build further down the branch
             ## or save the current mapping if in a leaf node.
-            if arcsleft >= bestarcsleft:        ## == comes from building all MCS, even ones where arcsleft are equal
+            if arcsleft > bestarcsleft:        ## == comes from building all MCS, even ones where arcsleft are equal
                 if v == G_node_amt - 1:
                     all_mappings.append((deepcopy(current_mapping), deepcopy(MARCS), arcsleft))
                     bestarcsleft = arcsleft
@@ -222,7 +261,7 @@ def mcs_mcgregor(G, H, anchor_point={}):
 
                     non_anchored_node = v
                     v += 1
-                    while v in anchor_point and v < G_node_amt:
+                    while v in G_anchor_nodes and v < G_node_amt:
                         v += 1
                     ## Skipping ahead resulted in jumping "out" of G, so we must backtrack to most
                     ## recent non-anchored node and save this mapping.
@@ -246,18 +285,16 @@ def mcs_mcgregor(G, H, anchor_point={}):
             ## When backtracking the algorithm continues backtracking until it reaches
             ## a non anchor point.
             v -= 1
-            while v in anchor_point and v > first_non_anchor:
+            while v in G_anchor_nodes and v > first_non_anchor:
                 v -= 1
             
-            ## NOTE: Skal vi ikke kun retunere den "mindste" til sidst, hvis vi skal sammenligne fuldstændigt?
-            ## NOTE: Tænker det er det værd, hvis vi vil prøve at sammenligne vores LeviBurstall m. den her for to grafer.
             ## If the algorithm has backtracked past the first non anchor point it means
             ## there are only anchor points left, therefore the algorithm stops.
             if v < first_non_anchor:
                 ## return only max
                 max_arcsleft = max(all_mappings, key=lambda items:items[2])[2]
                 all_mappings_filtered = list(filter(lambda x: x[2] == max_arcsleft, all_mappings))
-                return all_mappings_filtered
+                return all_mappings
             ## Restore the saved workspace
             MARCS = workspaces[v].get_MARCS()
             arcsleft = workspaces[v].get_arcsleft()
@@ -285,21 +322,30 @@ if __name__ == "__main__":
     G = nx.Graph()
     G.add_edges_from([(0,1), (0,2), (1,2), (2,3), (3,4)])
 
+    print(f"G edges: {G.edges}")
+
     H = nx.Graph()
     H.add_edges_from([(0,1), (1,2), (1,3), (1,7), (2,3), (3,4), (3,6), (6, 7), (7, 8), (4,5)])
 
     
-    edge_anchor = {
-                    (0, 1): (2, 1)
-                    }
+    edge_anchor = [[(0,1), (1, 2)]]
 
-    node_anchor = convert_edge_anchor(G, H, edge_anchor)
+    result = mcs_mcgregor(G, H, edge_anchor)
 
-    test_node_anchor = {
-                    0: 5,
-                    1: 4
-    }
-    result = mcs_mcgregor(G, H, test_node_anchor)
+    print("RESULT")
+    for (mapping, marcs, arcsleft) in result:
+         print(mapping)
+         print(marcs)
 
-    for results in result:
-        draw_mcgregor_mcs_graphs(G, H, results[0], results[1], test_node_anchor)
+    # for results in result:
+    #     draw_mcgregor_mcs_graphs(G, H, results[0], results[1], test_node_anchor)
+
+    # propanic_acid = ml.propanic_acid()
+    # methane_acid = ml.methane_acid()
+
+    # result = mcs_mcgregor(methane_acid, propanic_acid, molecule=True)
+
+    # for (mapping, marcs, arcsleft) in result:
+    #     print(mapping)
+    #     print(marcs)
+    #     print(arcsleft)
