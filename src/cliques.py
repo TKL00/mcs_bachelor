@@ -31,7 +31,8 @@ def mcs_list_leviBarrowBurstall(L, edge_anchor, limit_pg=True, molecule=False):
             limit_pg (boolean): Indicates whether the product graph should be limited to the neighbourhood of anchors or not, default to true
 
             molecule (boolean): Indicates whether the graphs in L are decorated molecules. If true, it is expected that each graph has
-                                attribute "atom_type" on nodes and "bond_type" on edges. 
+                                attribute "atom_type" on nodes and "bond_type" on edges. This further limits the tuples in the product graph.
+                                Default to false.
         
         `Returns`:
             all_mappings (list( list (list(edge))): Lists of mapping. That is, each element in all_mappings is a list of edge mappings between the graphs
@@ -225,14 +226,29 @@ def mcs_list_leviBarrowBurstall(L, edge_anchor, limit_pg=True, molecule=False):
 
 def iterative_approach(L, edge_anchor, limit_pg=True, molecule=False):
     """
-        L: List of graphs
+        Computes the maximum common subgraph of all graphs in L w.r.t the anchors in edge_anchor.
+        
+        `Parameters`
+            L (list: Graph): List of NetworkX graphs. Graphs may be decorated with labels.
+
+            edge_anchor (list( list(Edge))): A list of edge anchors. Each edge anchor is a list of edges,
+                                            each edge belongs to the graph in the order they are listed.
+                                            The order is always edges from L[0], L[1] and so on.
+                                            
+        `Optional`
+            limit_pg: Indicates whether the product graph should be limited to the neighbourhood of anchors or not, default to true.
+
+            molecule: Indicates whether the graphs in L are decorated molecules. If true, it is expected that each graph has
+                      attribute "atom_type" on nodes and "bond_type" on edges. This further limits the tuples in the product graph.
+                      Default to false.
     """
 
     def create_induced_graph(mapping, graph_extract_attributes):
         """
-            Creates edge induced subgraph based on the given mapping
-            (which is a list of lists of two edge and one should be chosen,
-            though the chosen index should be consistent)
+            
+            Creates the edge induced subgraph
+            
+            The attributes are inhertied from graph_extract_attributes (which should include all edges in mapping)
         """
         induced_graph = nx.Graph()
         ## Create edge-induced graph based on the given mapping
@@ -255,6 +271,17 @@ def iterative_approach(L, edge_anchor, limit_pg=True, molecule=False):
         return induced_graph
 
     def find_unique_graphs(all_mappings, graph_to_induce):
+        """
+            all_mappings: a list containing the mappings returned from mcs_list_leviBarrowBurstall
+            graph_to_induce: The graph to induce based on each mapping
+            
+            Filters out isomorphic graphs, as it is unnecessary to consider all branches 
+            of isomorphic graphs, only needs to look at one. 
+
+            Returns :  
+                unique_graphs: a list containing all unique graphs
+                unique_mappings: a dict ontaining the mappings corresponding to each unique graph in unique_graphs
+        """
         index_counter = 0
         ## Saving graphs that are not isomporphic to already seen graphs
         unique_graphs = []
@@ -262,9 +289,11 @@ def iterative_approach(L, edge_anchor, limit_pg=True, molecule=False):
         unique_mappings = {}
         for mappings in all_mappings:
             
+            ## Creates the induced graph from the current mapping
             found_subgraph = create_induced_graph(mappings, graph_to_induce)
 
             found_isomorph = False
+            ## The found_subgraph needs to be checked against each graph already added as a unique graph
             for graph in unique_graphs:
                 if molecule:
                     node_match = iso.categorical_node_match("atom_type", "")
@@ -277,6 +306,7 @@ def iterative_approach(L, edge_anchor, limit_pg=True, molecule=False):
                         found_isomorph = True
                         break
                 
+            ## Only add graphs to the list if it is not isomorphic to any existing graphs
             if not found_isomorph:
                 unique_graphs.append(found_subgraph)
                 unique_mappings[index_counter] = mappings
@@ -311,53 +341,38 @@ def iterative_approach(L, edge_anchor, limit_pg=True, molecule=False):
             mapping_to_recurse = unique_mappings[i]
             ## Only add extensions of the anchor
             if len(mapping_to_recurse) > anchor_bound:  
-                ## Create copy for each mapping to recurse on
-
-                new_current_mapping = copy.deepcopy(current_mapping)
-
-                continue_mapping = []
-                for i in range(len(mapping_to_recurse)):
-                    edge_list = mapping_to_recurse[i]
-                    ## Update the current mapping to include this found mapping, and update this mapping to track previous mappings including itself
-                    for j in range(len(current_mapping)):
-                        current_map = current_mapping[j]
-                        ## update those lists that include already mapped edges
-                        if edge_list[0] == current_map[0]: 
-                            ## add newly mapped member to old list of mapped members
-                            new_current_mapping[j].append(edge_list[1])
-                            ## only move those mapped edges forward with newly mapped edges
-                            continue_mapping.append(new_current_mapping[j])
+                
+                ## If no mapping has been created yet, this is the first mapping
+                if not current_mapping:
+                    continue_mapping = mapping_to_recurse
+                
+                ## otherwise, update the current mapping with the new edge in this graph
+                else:
+                    new_current_mapping = copy.deepcopy(current_mapping)
+                    continue_mapping = []
+                    for i in range(len(mapping_to_recurse)):
+                        edge_list = mapping_to_recurse[i]
+                        ## Update the current mapping to include this found mapping, and update this mapping to track previous mappings including itself
+                        for j in range(len(current_mapping)):
+                            current_map = current_mapping[j]
+                            ## update those lists that include already mapped edges
+                            if edge_list[0] == current_map[0]: 
+                                ## add newly mapped member to old list of mapped members
+                                new_current_mapping[j].append(edge_list[1])
+                                ## only move those mapped edges forward with newly mapped edges
+                                continue_mapping.append(new_current_mapping[j])
                 ## Continue recursively
                 _iterative_approach_rec(L, graph_to_recurse, to_mcs_graph + 1, all_mappings, continue_mapping, anchor_bound, anchor, graph_amt, limit_pg, molecule)
 
     ## Use anchor_size as guard in the recursive step, terminating branches that reach this length
     anchor_size = len(edge_anchor)
     mapping_list = []
-    ## Map L[0] edges to L[1] edges as initial anchor
-    start_anchor = [ [lists[0], lists[1]] for lists in edge_anchor]
-    graph_one = L[0]
-    graph_two = L[1]
 
-    mcs = mcs_list_leviBarrowBurstall([graph_one, graph_two], start_anchor, limit_pg, molecule)
-    
-    ## Filter duplicates, no need to branch multiple times for identical mappings
-    filtered_mcs = []
-    for l in mcs:
-        if sorted(l) not in filtered_mcs:
-            filtered_mcs.append(sorted(l))
+    ## first recursive step is between graph 0 and graph 1. 
+    ## the mapping list is updated for each recursive call that ends up with 
+    ## an actual extension of the anchor.
+    _iterative_approach_rec(L, L[0], 1, mapping_list, [], anchor_size, edge_anchor, len(L), limit_pg, molecule)
 
-    unique_graphs, unique_mappings = find_unique_graphs(filtered_mcs, graph_one)  
-
-    print("filtered mcs length", len(filtered_mcs))
-    print("unique mcs len", len(unique_graphs))
-
-    for i in range(len(unique_graphs)):
-        graph_to_recurse = unique_graphs[i]
-        mapping_to_recurse = unique_mappings[i]
-        
-        _iterative_approach_rec(L, graph_to_recurse, 2, mapping_list, copy.deepcopy(mapping_to_recurse), anchor_size, edge_anchor, len(L), limit_pg, molecule)
-
-    ## If nothing was added to the mapping list along the way, the anchor is the only common subgraph
     if not mapping_list:
         mapping_list = [edge_anchor]
 
@@ -400,25 +415,10 @@ def test_graphs(Gs, As, seq, molecules=False):
 
 
 if __name__ == "__main__":          
-        
-    # print(len(all_anchors))
     graphs, anchors = graph_format.convert_graph_file("../labelled_graphs/glucose_6-phosphate_dehydrogenase_forward.txt")
     dist_map, shortest_distance = anchor_reach(graphs, anchors)
 
     shrinked_graphs = shrink_graphs(graphs, 4, dist_map)
-
-    print("before shrinkage")
-    for i in graphs:
-        print(i)
-
-    print(f"shortest distance: {shortest_distance}")
-    print(dist_map)
-    
-    print("after shrinkage")
-    for i in shrinked_graphs:
-        print(i)
-    # draw_one_graph(graphs[2])
-    # draw_one_graph(shrinked_graphs[2])
 
     test_graphs(shrinked_graphs, anchors, [0, 3, 2, 1], True)
 
