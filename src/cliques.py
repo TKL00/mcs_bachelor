@@ -6,9 +6,11 @@ from itertools import chain
 import graph_format
 import numpy as np
 import networkx as nx
+import networkx.algorithms.isomorphism as iso
 from queue import Queue
 import copy
-from draw_graphs import draw_product_graph, draw_graphs, draw_blue_connected_components, draw_molecules
+from draw_graphs import draw_product_graph, draw_graphs, draw_blue_connected_components, draw_molecules, draw_one_graph
+from preprocessing import anchor_reach, shrink_graphs
 from molecules import *
 import time
 
@@ -226,6 +228,62 @@ def iterative_approach(L, edge_anchor, limit_pg=True, molecule=False):
         L: List of graphs
     """
 
+    def create_induced_graph(mapping, graph_extract_attributes):
+        """
+            Creates edge induced subgraph based on the given mapping
+            (which is a list of lists of two edge and one should be chosen,
+            though the chosen index should be consistent)
+        """
+        induced_graph = nx.Graph()
+        ## Create edge-induced graph based on the given mapping
+        ## circumvent the issue of out-of-order edges
+        nodes_to_add = set()
+        for edge_list in mapping:
+            (u, v) = edge_list[0]
+            nodes_to_add.add(u)
+            nodes_to_add.add(v)
+        nodes_to_add = sorted(list(nodes_to_add))
+        induced_graph.add_nodes_from(nodes_to_add)
+        induced_graph.add_edges_from(sorted([edge_list[0] for edge_list in mapping]))
+        if molecule:
+            atom_types = nx.get_node_attributes(graph_extract_attributes, "atom_type")
+            bond_types = nx.get_edge_attributes(graph_extract_attributes, "bond_type")
+
+            nx.set_node_attributes(induced_graph, atom_types, "atom_type")
+            nx.set_edge_attributes(induced_graph, bond_types, "bond_type")
+        
+        return induced_graph
+
+    def find_unique_graphs(all_mappings, graph_to_induce):
+        index_counter = 0
+        ## Saving graphs that are not isomporphic to already seen graphs
+        unique_graphs = []
+        ## mapping each index in unique_mappings to their mapping
+        unique_mappings = {}
+        for mappings in all_mappings:
+            
+            found_subgraph = create_induced_graph(mappings, graph_to_induce)
+
+            found_isomorph = False
+            for graph in unique_graphs:
+                if molecule:
+                    node_match = iso.categorical_node_match("atom_type", "")
+                    edge_match = iso.categorical_edge_match("bond_type", "")
+                    if nx.is_isomorphic(found_subgraph, graph, node_match, edge_match):
+                        found_isomorph = True
+                        break
+                else:
+                    if nx.is_isomorphic(found_subgraph, graph):
+                        found_isomorph = True
+                        break
+                
+            if not found_isomorph:
+                unique_graphs.append(found_subgraph)
+                unique_mappings[index_counter] = mappings
+                index_counter += 1
+        
+        return unique_graphs, unique_mappings
+
     def _iterative_approach_rec(L, current_mcs_graph, to_mcs_graph, all_mappings, current_mapping, anchor_bound, anchor, graph_amt, limit_pg=True, molecule=False):
         ## If end of L is reached, add the current mapping to the global list of mappings
         if to_mcs_graph == graph_amt:
@@ -245,35 +303,21 @@ def iterative_approach(L, edge_anchor, limit_pg=True, molecule=False):
         for l in mcs:
             if sorted(l) not in filtered_mcs:
                 filtered_mcs.append(sorted(l))
-                
-        for found_mapping in filtered_mcs:
+        
+        unique_graphs, unique_mappings = find_unique_graphs(filtered_mcs, graph_one)  
+        
+        for i in range(len(unique_graphs)):
+            graph_to_recurse = unique_graphs[i]
+            mapping_to_recurse = unique_mappings[i]
             ## Only add extensions of the anchor
-            if len(found_mapping) > anchor_bound:  
+            if len(mapping_to_recurse) > anchor_bound:  
                 ## Create copy for each mapping to recurse on
-                new_current_mapping = copy.deepcopy(current_mapping) 
 
-                ## Create induced graph to potentially to recurse on
-                current_mcs_graph = nx.Graph()   
-                nodes_to_add = set()
-                for edge_list in found_mapping:
-                    (u, v) = edge_list[0]
-                    nodes_to_add.add(u)
-                    nodes_to_add.add(v)
-                nodes_to_add = sorted(list(nodes_to_add))
-                current_mcs_graph.add_nodes_from(nodes_to_add)    
-                current_mcs_graph.add_edges_from(sorted([edge_list[0] for edge_list in found_mapping]))
-
-                # Inherit labels from current mcs
-                if molecule:
-                    atom_types = nx.get_node_attributes(graph_one, "atom_type")
-                    bond_types = nx.get_edge_attributes(graph_one, "bond_type")
-                    nx.set_node_attributes(current_mcs_graph, atom_types, "atom_type")
-                    nx.set_edge_attributes(current_mcs_graph, bond_types, "bond_type")
-                ## Update the found mapping with the previously found mapped edges
+                new_current_mapping = copy.deepcopy(current_mapping)
 
                 continue_mapping = []
-                for i in range(len(found_mapping)):
-                    edge_list = found_mapping[i]
+                for i in range(len(mapping_to_recurse)):
+                    edge_list = mapping_to_recurse[i]
                     ## Update the current mapping to include this found mapping, and update this mapping to track previous mappings including itself
                     for j in range(len(current_mapping)):
                         current_map = current_mapping[j]
@@ -284,7 +328,7 @@ def iterative_approach(L, edge_anchor, limit_pg=True, molecule=False):
                             ## only move those mapped edges forward with newly mapped edges
                             continue_mapping.append(new_current_mapping[j])
                 ## Continue recursively
-                _iterative_approach_rec(L, current_mcs_graph, to_mcs_graph + 1, all_mappings, continue_mapping, anchor_bound, anchor, graph_amt, limit_pg, molecule)
+                _iterative_approach_rec(L, graph_to_recurse, to_mcs_graph + 1, all_mappings, continue_mapping, anchor_bound, anchor, graph_amt, limit_pg, molecule)
 
     ## Use anchor_size as guard in the recursive step, terminating branches that reach this length
     anchor_size = len(edge_anchor)
@@ -302,26 +346,16 @@ def iterative_approach(L, edge_anchor, limit_pg=True, molecule=False):
         if sorted(l) not in filtered_mcs:
             filtered_mcs.append(sorted(l))
 
-    for mappings in filtered_mcs:
-        current_mcs_graph = nx.Graph()
-        ## Create edge-induced graph based on the given mapping
-        ## circumvent the issue of out-of-order edges
-        nodes_to_add = set()
-        for edge_list in mappings:
-            (u, v) = edge_list[0]
-            nodes_to_add.add(u)
-            nodes_to_add.add(v)
-        nodes_to_add = sorted(list(nodes_to_add))
-        current_mcs_graph.add_nodes_from(nodes_to_add)
-        current_mcs_graph.add_edges_from(sorted([edge_list[0] for edge_list in mappings]))
-        if molecule:
-            atom_types = nx.get_node_attributes(graph_one, "atom_type")
-            bond_types = nx.get_edge_attributes(graph_one, "bond_type")
+    unique_graphs, unique_mappings = find_unique_graphs(filtered_mcs, graph_one)  
 
-            nx.set_node_attributes(current_mcs_graph, atom_types, "atom_type")
-            nx.set_edge_attributes(current_mcs_graph, bond_types, "bond_type")
+    print("filtered mcs length", len(filtered_mcs))
+    print("unique mcs len", len(unique_graphs))
 
-        _iterative_approach_rec(L, current_mcs_graph, 2, mapping_list, copy.deepcopy(mappings), anchor_size, edge_anchor, len(L), limit_pg, molecule)
+    for i in range(len(unique_graphs)):
+        graph_to_recurse = unique_graphs[i]
+        mapping_to_recurse = unique_mappings[i]
+        
+        _iterative_approach_rec(L, graph_to_recurse, 2, mapping_list, copy.deepcopy(mapping_to_recurse), anchor_size, edge_anchor, len(L), limit_pg, molecule)
 
     ## If nothing was added to the mapping list along the way, the anchor is the only common subgraph
     if not mapping_list:
@@ -368,14 +402,25 @@ def test_graphs(Gs, As, seq, molecules=False):
 if __name__ == "__main__":          
         
     # print(len(all_anchors))
+    graphs, anchors = graph_format.convert_graph_file("../labelled_graphs/glucose_6-phosphate_dehydrogenase_forward.txt")
+    dist_map, shortest_distance = anchor_reach(graphs, anchors)
 
-    graphs, anchors = graph_format.convert_graph_file("../labelled_graphs/phosphogluconate_dehydrogenase.txt")
-    # print(len(graphs))
-    # test_graphs = [graphs[2], graphs[1], graphs[0], graphs[3]]
-    # test_anchors = graph_format.compute_anchor(test_graphs, [anchors[2], anchors[1], anchors[0], anchors[3]], molecule=True)
+    shrinked_graphs = shrink_graphs(graphs, 4, dist_map)
+
+    print("before shrinkage")
+    for i in graphs:
+        print(i)
+
+    print(f"shortest distance: {shortest_distance}")
+    print(dist_map)
     
+    print("after shrinkage")
+    for i in shrinked_graphs:
+        print(i)
+    # draw_one_graph(graphs[2])
+    # draw_one_graph(shrinked_graphs[2])
 
-    test_graphs(graphs, anchors, [0, 1, 2, 3, 4], True)
+    test_graphs(shrinked_graphs, anchors, [0, 3, 2, 1], True)
 
     
         
