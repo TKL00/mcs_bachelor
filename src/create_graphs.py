@@ -10,32 +10,38 @@ def inspect_graph(path):
 
 if __name__ == "__main__":
 
-    inspect_graph("../unlabelled_graphs/0.txt")
+    # inspect_graph("../unlabelled_anchored_graphs/0.txt")
 
     # GRAPH_AMT = 10
+    # SIZE_CLASSES = [5, 10, 20, 50, 100]
 
-    # graphs_written = 0
-    # for i in range(GRAPH_AMT):
+    
+    # for size_class in SIZE_CLASSES:
+    #     graphs_written = 0
+    #     while graphs_written != GRAPH_AMT:
 
-    #     random_number_nodes = random.randint(10, 19)
-    #     random_number_edges = random.randint(random_number_nodes, random_number_nodes * 3)
-    #     g = nx.dense_gnm_random_graph(random_number_nodes, random_number_edges)
-    #     if nx.is_connected(g):
-    #         path = "../unlabelled_graphs/" + str(graphs_written) + ".txt"
-    #         nx.write_adjlist(g, path)
-    #         draw_one_graph(g)
-    #         graphs_written += 1
+    #         random_number_edges = random.randint(int(size_class*1.5), size_class * 3)
+    #         g = nx.dense_gnm_random_graph(size_class, random_number_edges)
+    #         if nx.is_connected(g):
+    #             path = "../unlabelled_graphs/" + str(size_class) + "_" + str(graphs_written) + ".txt"
+    #             nx.write_adjlist(g, path)
+    #             graphs_written += 1
+                
+            
 
 
     
+    graphs_written = 0
+    while graphs_written < 1:
 
-
-    # graph = nx.dense_gnm_random_graph(15, 20)
-    # draw_one_graph(graph) 
-    # nx.write_adjlist(graph, "../unlabelled_graphs/test.txt")
-
-    # g = nx.read_adjlist("../unlabelled_graphs/test.txt")
-    
-
-    # with open("../unlabelled_graphs/test.txt", "w") as f:
         
+        random_number_nodes = random.randint(8, 10)
+        random_number_edges = random.randint(15, 20)
+        graph = nx.dense_gnm_random_graph(random_number_nodes, random_number_edges)
+        
+        if nx.is_connected(graph):
+            draw_one_graph(graph) 
+            nx.write_adjlist(graph, "../unlabelled_anchored_graphs/" + "4" + ".txt")
+        
+            graphs_written += 1
+            
