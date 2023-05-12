@@ -145,7 +145,7 @@ def mcs_list_leviBarrowBurstall(L, edge_anchor, limit_pg=True, molecule=False):
         MCSs = []
         ## Create node induced subgraph of the modular product graph containing all blue connected components
         blue_component_graph = nx.Graph(nx.induced_subgraph(PG, chain(*listN)))
-        
+
         component_cliques = list(nx.find_cliques(blue_component_graph))
 
         ## For each clique, create the induced subgraph concatenated with the anchor
@@ -420,12 +420,14 @@ def test_graphs(Gs, As, seq, molecules=False):
 
 
 # if __name__ == "__main__":          
-#     graphs, anchors = graph_format.convert_graph_file("../labelled_graphs/alcohol_dehydrogenase_ethanol_backward.txt")
-#     dist_map, shortest_distance = anchor_reach(graphs, anchors)
+    # graphs, anchors = graph_format.convert_graph_file("../labelled_graphs/alcohol_dehydrogenase_ethanol_backward.txt")
+    # dist_map, shortest_distance = anchor_reach(graphs, anchors)
 
-#     shrinked_graphs = shrink_graphs(graphs, 7, dist_map)
+    # shrinked_graphs = shrink_graphs(graphs, 4, dist_map)
+    # for i in shrinked_graphs:
+    #     print(i)
 
-#     test_graphs(graphs, anchors, [0, 2, 1], True)
+    # test_graphs(shrinked_graphs, anchors, [0, 2, 1], True)
 
     
         
