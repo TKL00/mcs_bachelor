@@ -145,7 +145,7 @@ def mcs_list_leviBarrowBurstall(L, edge_anchor, limit_pg=True, molecule=False):
         MCSs = []
         ## Create node induced subgraph of the modular product graph containing all blue connected components
         blue_component_graph = nx.Graph(nx.induced_subgraph(PG, chain(*listN)))
-        print("blue_component_graph:", blue_component_graph)
+        
         component_cliques = list(nx.find_cliques(blue_component_graph))
 
         ## For each clique, create the induced subgraph concatenated with the anchor
@@ -396,31 +396,36 @@ def test_graphs(Gs, As, seq, molecules=False):
     test_anchors = graph_format.compute_anchor(graph_seq, anchor_seq, molecule=molecules)
     print(f"Number of computed anchors: {len(test_anchors)}")
 
+    global_maximum = 0
     for anchor in test_anchors:
         time_before = time.time()
         res_iterative = iterative_approach(graph_seq, anchor, molecule=True)
         time_after = time.time() 
         
         map_lengths = max([len(i) for i in res_iterative])
+        if map_lengths > global_maximum: global_maximum = map_lengths
+
         max_mapping = list(filter(lambda x: len(x) == map_lengths, res_iterative))
 
-        if map_lengths >= 8:
-            draw_molecules(graph_seq, [max_mapping[0]], anchor)
+        # if map_lengths >= 8:
+        #     draw_molecules(graph_seq, [max_mapping[0]], anchor)
 
         print(f"Max extension: {map_lengths}")
         print(f"Number of extensions: {len(res_iterative)}")
         print(f"Number of extensions of max size: {len(max_mapping)}")
         print(f"time spent: {time_after-time_before} seconds")
         print()
+    
+    print(global_maximum)
 
 
-if __name__ == "__main__":          
-    graphs, anchors = graph_format.convert_graph_file("../labelled_graphs/glucose_6-phosphate_dehydrogenase_forward.txt")
-    dist_map, shortest_distance = anchor_reach(graphs, anchors)
+# if __name__ == "__main__":          
+#     graphs, anchors = graph_format.convert_graph_file("../labelled_graphs/alcohol_dehydrogenase_ethanol_backward.txt")
+#     dist_map, shortest_distance = anchor_reach(graphs, anchors)
 
-    shrinked_graphs = shrink_graphs(graphs, 4, dist_map)
+#     shrinked_graphs = shrink_graphs(graphs, 7, dist_map)
 
-    test_graphs(shrinked_graphs, anchors, [0, 3, 2, 1], True)
+#     test_graphs(graphs, anchors, [0, 2, 1], True)
 
     
         
