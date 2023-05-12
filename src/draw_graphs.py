@@ -89,7 +89,6 @@ def draw_graphs(L, mappings, edge_anchor):
             ## Highlight anchored edges
             for lists in edge_anchor:
                 edge_to_draw = [lists[graph_index]]
-                print(f"edge to draw {edge_to_draw}")
                 nx.draw_networkx_edges(graph, position, edge_to_draw, width=8, edge_color="gray", alpha=0.3, ax=ax)
             
             ## Draw each edge individually, color is based on their bond type
@@ -100,7 +99,6 @@ def draw_graphs(L, mappings, edge_anchor):
             label_iterator = 0
             for lists in mapping:
                 label = {lists[graph_index]: label_string[label_iterator]}
-                print(f"label: {label}")
                 nx.draw_networkx_edge_labels(graph, position, label, ax=ax, font_color="lightseagreen", font_family="calibri", font_size=15)
                 label_iterator += 1
 
