@@ -415,19 +415,6 @@ def test_graphs(Gs, As, seq, molecules=False):
         print(f"Number of extensions of max size: {len(max_mapping)}")
         print(f"time spent: {time_after-time_before} seconds")
         print()
-    
-    print(global_maximum)
-
-
-# if __name__ == "__main__":          
-    # graphs, anchors = graph_format.convert_graph_file("../labelled_graphs/alcohol_dehydrogenase_ethanol_backward.txt")
-    # dist_map, shortest_distance = anchor_reach(graphs, anchors)
-
-    # shrinked_graphs = shrink_graphs(graphs, 4, dist_map)
-    # for i in shrinked_graphs:
-    #     print(i)
-
-    # test_graphs(shrinked_graphs, anchors, [0, 2, 1], True)
 
     
         
