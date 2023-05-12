@@ -193,9 +193,6 @@ def mcs_mcgregor(G, H, edge_anchor=[], molecule=False):
 
     if molecule:
         arcsleft = modify_MARCS_bond_type(MARCS, MARCS_row_ones, arcsleft, G_bond_types, H_bond_types)
-    
-    print("initial marcs")
-    print(MARCS)
         
     ## v in G, x in H
     v = 0
@@ -318,18 +315,13 @@ def construct_cs(G, marcs):
 
 if __name__ == "__main__":
 
-    G = nx.Graph()
-    G.add_edges_from([(0,1), (0,2), (1,2), (2,3), (3,4)])
+    G = nx.read_adjlist("../unlabelled_graphs/10_0.txt", nodetype=int)
 
     print(f"G edges: {G.edges}")
 
-    H = nx.Graph()
-    H.add_edges_from([(0,1), (1,2), (1,3), (1,7), (2,3), (3,4), (3,6), (6, 7), (7, 8), (4,5)])
+    H = nx.read_adjlist("../unlabelled_graphs/10_1.txt", nodetype=int)
 
-    
-    edge_anchor = [[(0,1), (1, 2)]]
-
-    result = mcs_mcgregor(G, H, edge_anchor)
+    result = mcs_mcgregor(G, H)
 
     print("RESULT")
     for (mapping, marcs, arcsleft) in result:
