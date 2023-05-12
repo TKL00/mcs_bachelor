@@ -312,31 +312,3 @@ def construct_cs(G, marcs):
                 subgraph.add_edge(G_edges[row][0], G_edges[row][1])
 
     return subgraph
-
-if __name__ == "__main__":
-
-    G = nx.read_adjlist("../unlabelled_graphs/10_0.txt", nodetype=int)
-
-    print(f"G edges: {G.edges}")
-
-    H = nx.read_adjlist("../unlabelled_graphs/10_1.txt", nodetype=int)
-
-    result = mcs_mcgregor(G, H)
-
-    print("RESULT")
-    for (mapping, marcs, arcsleft) in result:
-         print(mapping)
-         print(marcs)
-
-    # for results in result:
-    #     draw_mcgregor_mcs_graphs(G, H, results[0], results[1], test_node_anchor)
-
-    # propanic_acid = ml.propanic_acid()
-    # methane_acid = ml.methane_acid()
-
-    # result = mcs_mcgregor(methane_acid, propanic_acid, molecule=True)
-
-    # for (mapping, marcs, arcsleft) in result:
-    #     print(mapping)
-    #     print(marcs)
-    #     print(arcsleft)
