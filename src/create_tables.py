@@ -31,7 +31,7 @@ def mcgregor_same_class(list_of_graphs):
                 time_before = time.time()
                 res = call_mcgregor(g1, g2)
                 time_after = time.time()
-                print(f"{len(g1.nodes)}/{len(g1.edges)}\t{len(g2.nodes)}/{len(g2.edges)}\t{time_after-time_before}")
+                print(f"{len(g1.nodes)}/{len(g1.edges)}\t{len(g2.nodes)}/{len(g2.edges)}\t{round(time_after-time_before, ndigits=5)}")
             except:
                 print(f"{len(g1.nodes)}/{len(g1.edges)}\t{len(g2.nodes)}/{len(g2.edges)}\ttimed out after {MC_GREGOR_TIMEOUT} seconds")
             
@@ -45,7 +45,7 @@ def mcgregor_across_class(list_of_graphs_c1, list_of_graphs_c2):
                 time_before = time.time()
                 res = call_mcgregor(g1, g2)
                 time_after = time.time()
-                print(f"{len(g1.nodes)}/{len(g1.edges)}\t{len(g2.nodes)}/{len(g2.edges)} \t {time_after-time_before}")
+                print(f"{len(g1.nodes)}/{len(g1.edges)}\t{len(g2.nodes)}/{len(g2.edges)} \t {round(time_after-time_before, ndigits=5)}")
             except:
                 print(f"{len(g1.nodes)}/{len(g1.edges)}\t{len(g2.nodes)}/{len(g2.edges)}\ttimed out after{MC_GREGOR_TIMEOUT}seconds")
 
@@ -97,9 +97,9 @@ def table1():
     twenty = list(filter(lambda g: len(g.nodes) == 20, all_graphs))
 
     print(f"g1 n/e\tg2 n/e\ttime (s)")
-    mcgregor_same_class(five)
-    mcgregor_same_class(ten)
-    mcgregor_same_class(twenty)
+    # mcgregor_same_class(five)
+    # mcgregor_same_class(ten)
+    # mcgregor_same_class(twenty)
 
     mcgregor_across_class(five, ten)
     mcgregor_across_class(ten, twenty)
@@ -223,11 +223,8 @@ def table4():
             try:
                 res = call_cliques(shrunk_graphs, chosen_anchor, True, True)
                 time_after = time.time()
-                if res:
-                    max_length = max([len(i) for i in res])
-                    print(f"{file_name}\t{n_graphs}\t{max_size}\t{seq}\t{dist_class}\t{max_length}\t{round(time_after-time_before, ndigits=5)} ")
-                else:
-                    print(f"{file_name}\t{n_graphs}\t{max_size}\t{seq}\t{dist_class}\t-\ttimed out after {CLIQUES_TIMEOUT} seconds ")
+                max_length = max([len(i) for i in res])
+                print(f"{file_name}\t{n_graphs}\t{max_size}\t{seq}\t{dist_class}\t{max_length}\t{round(time_after-time_before, ndigits=5)} ")
             except:
                 print(f"{file_name}\t{n_graphs}\t{max_size}\t{seq}\t{dist_class}\t-\ttimed out after {CLIQUES_TIMEOUT} seconds ")
                 break
