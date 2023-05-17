@@ -223,7 +223,7 @@ def table4():
             try:
                 res = call_cliques(shrunk_graphs, chosen_anchor, True, True)
                 time_after = time.time()
-                max_length = max([len(i) for i in res])
+                max_length = max([len(i) for i in res]) - anchor_size
                 print(f"{file_name}\t{n_graphs}\t{max_size}\t{seq}\t{dist_class}\t{max_length}\t{round(time_after-time_before, ndigits=5)} ")
             except:
                 print(f"{file_name}\t{n_graphs}\t{max_size}\t{seq}\t{dist_class}\t-\ttimed out after {CLIQUES_TIMEOUT} seconds ")
@@ -233,6 +233,6 @@ def table4():
 
 
 if __name__ == "__main__":
-    table1()
+    # table1()
     # table3()
-    # table4()
+    table4()
