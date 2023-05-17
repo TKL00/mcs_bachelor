@@ -30,9 +30,9 @@ def mcs_list_leviBarrowBurstall(L, edge_anchor, limit_pg=True, molecule=False):
         `Optional`:
             limit_pg (boolean): Indicates whether the product graph should be limited to the neighbourhood of anchors or not, default to true
 
-            molecule (boolean): Indicates whether the graphs in L are decorated molecules. If true, it is expected that each graph has
-                                attribute "atom_type" on nodes and "bond_type" on edges. This further limits the tuples in the product graph.
-                                Default to false.
+            molecule (boolean): Indicates whether the graphs in L are decorated molecules (only relevant if limit_pg is true). 
+                                If true, it is expected that each graph has attribute "atom_type" on nodes and "bond_type" on edges. This further limits the tuples
+                                in the product graph. Default to false.
         
         `Returns`:
             all_mappings (list( list (list(edge))): Lists of mapping. That is, each element in all_mappings is a list of edge mappings between the graphs
@@ -139,8 +139,9 @@ def mcs_list_leviBarrowBurstall(L, edge_anchor, limit_pg=True, molecule=False):
         """
             Implementation of Algorithm 1 as suggested by Akbar Davoodi.
 
-            Finds all maximal cliques in all blue connected components and creates
-            the union of these with the anchor point.
+            Finds all maximal cliques among all blue connected components. All nodes not reachable by the anchor
+            in the graph induced by A and a specific clique are removed, and the remaining nodes in the clique
+            is unioned with the anchor as an extension.
         """
         MCSs = []
         ## Create node induced subgraph of the modular product graph containing all blue connected components
@@ -245,7 +246,6 @@ def iterative_approach(L, edge_anchor, limit_pg=True, molecule=False):
 
     def create_induced_graph(mapping, graph_extract_attributes):
         """
-            
             Creates the edge induced subgraph
             
             The attributes are inhertied from graph_extract_attributes (which should include all edges in mapping)
@@ -315,6 +315,13 @@ def iterative_approach(L, edge_anchor, limit_pg=True, molecule=False):
         return unique_graphs, unique_mappings
 
     def _iterative_approach_rec(L, current_mcs_graph, to_mcs_graph, all_mappings, current_mapping, anchor_bound, anchor, graph_amt, limit_pg=True, molecule=False):
+        """
+            Computes the maximal anchor extentions between current_mcs_graph and L[to_mcs_graph] and
+            recursively branches out on each maximal extension who actually includes edges outside the anchor. 
+            In case a leaf is reached, the algorithm terminates and inserts the currently built mapping into the list of all mappings.
+            
+        """
+        
         ## If end of L is reached, add the current mapping to the global list of mappings
         if to_mcs_graph == graph_amt:
             all_mappings.append(current_mapping)
@@ -380,7 +387,7 @@ def iterative_approach(L, edge_anchor, limit_pg=True, molecule=False):
 
 def all_products(L, edge_anchor, limit_pg=True, molecule=False):
     """
-        L: List of graphs
+        See mcs_list_leviBarrowBurstall
     """
 
     subgraphs = mcs_list_leviBarrowBurstall(L, edge_anchor, limit_pg, molecule)
