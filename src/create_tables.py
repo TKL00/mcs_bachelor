@@ -1,4 +1,4 @@
-from mcgregor import mcs_mcgregor
+from mcgregor import mcs_mcgregor, construct_cs
 from draw_graphs import draw_mcgregor_mcs_graphs, draw_graphs, draw_one_graph
 from graph_format import compute_anchor
 from cliques import iterative_approach
@@ -47,7 +47,7 @@ def mcgregor_across_class(list_of_graphs_c1, list_of_graphs_c2):
                 time_after = time.time()
                 print(f"{len(g1.nodes)}/{len(g1.edges)}\t{len(g2.nodes)}/{len(g2.edges)} \t {round(time_after-time_before, ndigits=5)}")
             except:
-                print(f"{len(g1.nodes)}/{len(g1.edges)}\t{len(g2.nodes)}/{len(g2.edges)}\ttimed out after{MC_GREGOR_TIMEOUT}seconds")
+                print(f"{len(g1.nodes)}/{len(g1.edges)}\t{len(g2.nodes)}/{len(g2.edges)}\ttimed out after{MC_GREGOR_TIMEOUT} seconds")
 
 def fix_edge_ordering(G):
     edge_set = list(G.edges)
@@ -102,6 +102,7 @@ def table1():
     # mcgregor_same_class(twenty)
 
     mcgregor_across_class(five, ten)
+    mcgregor_across_class(five, twenty)
     mcgregor_across_class(ten, twenty)
             
     return None
@@ -140,8 +141,8 @@ def table3():
     indices = [i for i in range(len(all_graphs))]
 
     res = []
-    for i in range(2, len(indices)):
-        res.append(list(it.permutations(indices, i)))
+    # for i in range(2, len(indices)):
+    res.append(list(it.permutations(indices, 5)))
 
     all_orders = list(it.chain(*res))
 
@@ -183,7 +184,7 @@ def table4():
             all_graphs.append(graphs)
             all_anchors.append(anchors)
     
-    for i in file_names: print(i)
+    # for i in file_names: print(i)
     distance_classes = [1, 2, 3, 4, 5, 6, 7, 8, 9]
     for i in range(len(all_graphs) - 1):
         
@@ -231,8 +232,58 @@ def table4():
 
     return None 
 
+def table5():
+    path = "../unlabelled_anchored_graphs"
+
+    print(f"graph seq\tmax extension\ttime (s)")
+    all_graphs = []
+    anchored_edges = []
+    for (root, dirs, files) in os.walk(path):
+        
+        anchor_files = sorted(list(filter(lambda name: "anchor" in name, files)))
+        graph_files = sorted(list(filter(lambda name: name.endswith(".txt") and "anchor" not in name, files)))
+        for graph_file in graph_files:
+            full_file_path = os.path.join(path, graph_file)
+            if full_file_path.endswith(".txt"):
+                g = nx.read_adjlist(full_file_path, nodetype=int)
+                all_graphs.append(g)
+        
+        for anchor_file in anchor_files:
+            anchor_path = os.path.join(path, anchor_file)
+            with open(anchor_path) as f:
+                graph_anchored_edges = []
+                for lines in f:
+                    indices = lines.split(",")
+                    graph_anchored_edges.append((int(indices[0]), int(indices[1])))
+                anchored_edges.append(graph_anchored_edges)
+    
+    
+    fixed_graphs = [fix_edge_ordering(G) for G in all_graphs]
+
+    seq = [2, 4, 1, 0 , 3]
+    new_anchors = [anchored_edges[i] for i in seq]
+    indices = [i for i in range(len(all_graphs))]
+    anchor = []
+    print(new_anchors)
+    for i in range(len(anchored_edges[0])):
+        new_anchor = []
+        for index in indices:
+            new_anchor.append(new_anchors[int(index)][int(i)])
+        anchor.append(new_anchor)
+    
+    first_graph = all_graphs[2]
+    graph_two = all_graphs[4]
+    first_anchor = []
+    print(anchor)
+    # for i in range(1, len(all_graphs)):
+    #     res = 
+
+    # 2 4 1 0 3
+
+
 
 if __name__ == "__main__":
     # table1()
     # table3()
-    table4()
+    # table4()
+    table5()
