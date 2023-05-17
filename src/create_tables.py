@@ -1,7 +1,7 @@
 from mcgregor import mcs_mcgregor, construct_cs
 from draw_graphs import draw_mcgregor_mcs_graphs, draw_graphs, draw_one_graph
 from graph_format import compute_anchor
-from cliques import iterative_approach
+from cliques import iterative_approach, all_products
 from graph_format import convert_graph_file
 import timeout_decorator
 import networkx as nx
@@ -21,6 +21,10 @@ def call_mcgregor(g1, g2):
 @timeout_decorator.timeout(CLIQUES_TIMEOUT)
 def call_cliques(graphs, anchor, bool1, bool2):
     return iterative_approach(graphs, anchor, bool1, bool2)
+
+@timeout_decorator.timeout(CLIQUES_TIMEOUT)
+def call_cliques_mass(graphs, anchor, bool1, bool2):
+    return all_products(graphs, anchor, bool1, bool2)
 
 def mcgregor_same_class(list_of_graphs):
     for i in range(len(list_of_graphs)):
@@ -232,6 +236,70 @@ def table4():
 
     return None 
 
+def table4_all():
+    print(f"filename\tnumber of graphs\tlargest # nodes\tgraph seq\tmax distance\tmax extension\ttime(s)")
+    
+    clique_seq = [
+           [2, 1, 0, 3],
+           [2, 1, 0, 3],
+           [2, 1, 0, 3],
+           [2, 1, 0, 3],
+           [0, 2, 1],
+           [0, 3, 1, 2],
+           [0, 2, 1, 3],
+           [0, 2, 1, 3],
+           [0, 1, 2, 3],
+           [0, 2, 1],
+           [0, 3, 2, 1]
+        ]
+    
+    path = "../labelled_graphs"
+    all_graphs = []
+    all_anchors = []
+    file_names = []
+    for (root, dirs, files) in os.walk(path):
+        for file_name in files:
+            
+            file_names.append(file_name)
+            
+            full_file_path = os.path.join(path, file_name)
+            graphs, anchors = convert_graph_file(full_file_path)
+            all_graphs.append(graphs)
+            all_anchors.append(anchors)
+    
+    # for i in file_names: print(i)
+    distance_classes = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+    for i in range(len(all_graphs) - 1):
+        
+        ## print without shrinkage
+        file_name = file_names[i]
+        Gs = all_graphs[i]
+        max_size = max([len(g.nodes) for g in Gs])
+        n_graphs = len(Gs)
+        As = all_anchors[i]
+        seq = clique_seq[i]
+        graph_seq = [Gs[i] for i in seq]
+        anchor_seq = [As[i] for i in seq]
+        
+        graph_anchor = compute_anchor(graph_seq, anchor_seq, True)
+        chosen_anchor = graph_anchor[0]
+
+        anchor_size = len(chosen_anchor)
+        
+
+        try: 
+            time_before = time.time()
+            res = call_cliques_mass(graph_seq, chosen_anchor, True, True)
+            time_after = time.time()
+            if res:
+                max_length = max([len(i) for i in res]) - anchor_size
+                print(f"{file_name}\t{n_graphs}\t{max_size}\t{seq}\tinfinity\t{max_length}\t{round(time_after-time_before, ndigits=5)} ")
+        except:
+            print(f"{file_name}\t{n_graphs}\t{max_size}\t{seq}\tinfinity\t-\ttimed out after {CLIQUES_TIMEOUT} seconds ")
+        
+
+    return None 
+
 def table5():
     path = "../unlabelled_anchored_graphs"
 
@@ -286,4 +354,5 @@ if __name__ == "__main__":
     # table1()
     # table3()
     # table4()
-    table5()
+    # table5()
+    table4_all()
