@@ -107,7 +107,7 @@ def mcs_mcgregor(G, H, edge_anchor=[], molecule=False):
 
             ## H-column is set to 0 except for the anchor in G
             for i in range(G_edge_amt):
-                if i != G_edge:
+                if i != G_edge and MARCS[i][H_edge] == 1:
                     MARCS[i][H_edge] = 0
                     MARCS_row_ones[i] -= 1 ## A single cell in each row has been changed to 0
                     if MARCS_row_ones[i] == 0: arcsleft -= 1
@@ -128,7 +128,7 @@ def mcs_mcgregor(G, H, edge_anchor=[], molecule=False):
                     g_edge_index = list(G.edges).index((g2, g1))
                 for i in range(H_edge_amt):
                     (h1, h2) = list(H.edges)[i]
-                    if (h1, h2) not in H_incident and (h2, h1) not in H_incident:
+                    if (h1, h2) not in H_incident and (h2, h1) not in H_incident and MARCS[g_edge_index][i] == 1:
                         MARCS[g_edge_index][i] = 0
                         MARCS_row_ones[g_edge_index] -= 1
                         if MARCS_row_ones[g_edge_index] == 0: arcsleft -= 1
