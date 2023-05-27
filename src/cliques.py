@@ -380,10 +380,19 @@ def iterative_approach(L, edge_anchor, limit_pg=True, molecule=False):
     ## an actual extension of the anchor.
     _iterative_approach_rec(L, L[0], 1, mapping_list, [], anchor_size, edge_anchor, len(L), limit_pg, molecule)
 
+    ## No extensions found, the mapping is the anchor
     if not mapping_list:
         mapping_list = [edge_anchor]
 
-    return mapping_list
+    ## Some extensions found, possibly some duplicates.
+    else:
+        ## filter based on isomorphism - some branches might reduce to the same mapping in the end.
+        unique_graphs, unique_mappings = find_unique_graphs(mapping_list, L[0])
+        
+        ## unique_mappings is a dict of mappings for each unique graph found. Extract such mappings.
+        mapping_list = [unique_mappings[i] for i in unique_mappings]
+
+        return mapping_list
 
 def all_products(L, edge_anchor, limit_pg=True, molecule=False):
     """
