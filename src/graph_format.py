@@ -36,7 +36,11 @@ def switch_bond_type(input):
         return "q"
 
 def convert_graph_file(path):
-    
+    """
+        Given a path to a file containing anchored molecule graphs, computes a list
+        of these graphs in NetworkX' Graph representation. Additionally, a list
+        of anchored edges L is returned s.t. L[i] contains all anchored edges in G[i].
+    """
 
     ## The file containing our data is currently hardcodedd, could potentially be changed
     with open(path, "r") as file:
@@ -66,7 +70,7 @@ def convert_graph_file(path):
                 all_graphs.append(G)
                 all_anchors.append(anchor_edges)
                 
-                
+                ## Prepare for the next graph
                 G = nx.Graph()
                 node_attribute_dict = {}
                 edge_attribute_dict = {}
@@ -186,7 +190,7 @@ def compute_anchor(Gs, AEs, molecule=False):
             mappings_of_edge_type = list(itertools.product(*permutations_of_indices))
             edge_type_options[edge_type] = mappings_of_edge_type
             
-        all_edge_type_map_combinations = list(itertools.product(*edge_type_options.values()))
+        all_edge_type_map_combinations = itertools.product(*edge_type_options.values())
 
         ## Each combination tuple corresponds to (x, y, ..) where x is a mapping of edge type 0 in all graphs, y is a mapping of all edges of type 1 and so on.
         ## That is, each tuple is an anchor option.

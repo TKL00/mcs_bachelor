@@ -6,7 +6,6 @@ from workspace import Workspace
 from linegraph import line_graph as lg
 from linegraph import convert_edge_anchor
 from draw_graphs import draw_mcgregor_mcs_graphs
-import molecules as ml
 
 ### Authors: Tobias Klink Lehn (toleh20@student.sdu.dk) and Kasper Halkjær Beider (kbeid20@student.sdu.dk)
 def mcs_mcgregor(G, H, edge_anchor=[], molecule=False):
@@ -308,7 +307,6 @@ def construct_cs(G, marcs):
     for row in range(len(marcs)):
         for column in range(len(marcs[0])):
             if marcs[row][column] == 1:
-                print(G_edges[row])
                 subgraph.add_edge(G_edges[row][0], G_edges[row][1])
 
     return subgraph

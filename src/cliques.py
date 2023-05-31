@@ -4,13 +4,10 @@ from linegraph import line_graph as lg
 from linegraph import convert_edge_anchor_lg_list
 from itertools import chain
 import graph_format
-import numpy as np
 import networkx as nx
 import networkx.algorithms.isomorphism as iso
 from queue import Queue
 import copy
-from draw_graphs import draw_product_graph, draw_graphs, draw_blue_connected_components, draw_molecules, draw_one_graph
-from preprocessing import anchor_reach, shrink_graphs
 from molecules import *
 import time
 
@@ -24,7 +21,7 @@ def mcs_list_leviBarrowBurstall(L, edge_anchor, limit_pg=True, molecule=False):
         `Paramters`:
             L (list(Graph)): A list of networkX graphs.
 
-            edge_anchor (list: list(edge)): A valid one-to-one between edges in the graphs in L. An element X in the edge_anchor 
+            edge_anchor (list: list(edge)): A valid mapping between edges in the graphs in L. An element X in the edge_anchor 
                                             is thus a list of edges, where X[i] is an edge in L[i]. All edges in X are mapped to each other.
 
         `Optional`:
@@ -35,11 +32,9 @@ def mcs_list_leviBarrowBurstall(L, edge_anchor, limit_pg=True, molecule=False):
                                 in the product graph. Default to false.
         
         `Returns`:
+        
             all_mappings (list( list (list(edge))): Lists of mapping. That is, each element in all_mappings is a list of edge mappings between the graphs
                                                     following the same format as edge_anchor.
-            
-            A valid mapping from nodes in G to nodes in H if a node_anchor was given.
-            Otherwise, a mapping from edges in G to edges in H.
             
     """
 
@@ -67,10 +62,9 @@ def mcs_list_leviBarrowBurstall(L, edge_anchor, limit_pg=True, molecule=False):
         """
         ## BFS to find all nodes that are connected to A through blue edges
         ## all nodes in the product graph are white in the beginning
-        ## NOTE: optimization for not whitening all the nodes in PG, but only the ones in A and N.
-        
+
         ## Avoiding all nodes not in A and N by giving them a scary color
-        node_color_lookup = { node: "p" for node in PG.nodes}                               ## SNAK OM DET HER PÅ ET TIDSPUNKT
+        node_color_lookup = { node: "p" for node in PG.nodes}
         for nodes in A:
             node_color_lookup[nodes] = "w"
         for nodes in N:
@@ -151,7 +145,7 @@ def mcs_list_leviBarrowBurstall(L, edge_anchor, limit_pg=True, molecule=False):
 
         ## For each clique, create the induced subgraph concatenated with the anchor
         ## do BFS on this new graph, removing all nodes that are not reachable by a blue edge from the anchor
-        for comp_clique in component_cliques:
+        for comp_clique in component_cliques:          
             bfs_graph = nx.Graph(nx.induced_subgraph(PG, A + comp_clique))
             node_color_lookup = {node: 'w' for node in bfs_graph.nodes}
             edge_color_lookup = nx.get_edge_attributes(bfs_graph, "color")
@@ -180,8 +174,6 @@ def mcs_list_leviBarrowBurstall(L, edge_anchor, limit_pg=True, molecule=False):
     n_graphs = len(L)
     edge_lists = [list(L[i].edges) for i in range(n_graphs)]
 
-    ## Use Line-Graph implementation
-
     linegraphs = [lg(L[i], molecule=molecule) for i in range(n_graphs)]
 
     ## List of anchor nodes in the linegraphs
@@ -200,7 +192,7 @@ def mcs_list_leviBarrowBurstall(L, edge_anchor, limit_pg=True, molecule=False):
     ## Mapping edges in the product graph to their color
     color_dictionary = nx.get_edge_attributes(mod_product_graph, "color")
 
-    ## computing N by intersecting all neighbours among the anchor points (NOTE: possible optimization when computing the intersection)
+    ## computing N by intersecting all neighbours among the anchor points
     common_neighbours_N = list(mod_product_graph.adj[anchor_nodes[0]].keys())
     for nodes in anchor_nodes:
         common_neighbours_N = [value for value in common_neighbours_N if value in mod_product_graph.adj[nodes].keys()]
@@ -246,9 +238,8 @@ def iterative_approach(L, edge_anchor, limit_pg=True, molecule=False):
 
     def create_induced_graph(mapping, graph_extract_attributes):
         """
-            Creates the edge induced subgraph
-            
-            The attributes are inhertied from graph_extract_attributes (which should include all edges in mapping)
+            Creates the edge induced subgraph containing all edges of mapping. graph_extract_attributes is the graph
+            containing the attributes to be inherited. Therefore, graph_extract_attributes should contain all edges in mapping.
         """
         induced_graph = nx.Graph()
         ## Create edge-induced graph based on the given mapping
@@ -319,7 +310,6 @@ def iterative_approach(L, edge_anchor, limit_pg=True, molecule=False):
             Computes the maximal anchor extentions between current_mcs_graph and L[to_mcs_graph] and
             recursively branches out on each maximal extension who actually includes edges outside the anchor. 
             In case a leaf is reached, the algorithm terminates and inserts the currently built mapping into the list of all mappings.
-            
         """
         
         ## If end of L is reached, add the current mapping to the global list of mappings
@@ -405,6 +395,12 @@ def all_products(L, edge_anchor, limit_pg=True, molecule=False):
 
 
 def test_graphs(Gs, As, seq, molecules=False):
+    """
+        A test function that takes a list of graphs, a list of anchors, a sequence
+        and a boolean to indicate whether the graphs are decorated or not. 
+        Prints the max extension, the number of extensions and the number of extensions of max size.
+        Lastly it prints the time it took to complete. 
+    """
 
     graph_seq = [Gs[i] for i in seq]
     anchor_seq = [As[i] for i in seq]
@@ -423,17 +419,9 @@ def test_graphs(Gs, As, seq, molecules=False):
 
         max_mapping = list(filter(lambda x: len(x) == map_lengths, res_iterative))
 
-        # if map_lengths >= 8:
-        #     draw_molecules(graph_seq, [max_mapping[0]], anchor)
 
         print(f"Max extension: {map_lengths}")
         print(f"Number of extensions: {len(res_iterative)}")
         print(f"Number of extensions of max size: {len(max_mapping)}")
         print(f"time spent: {time_after-time_before} seconds")
         print()
-
-    
-        
-        
-
-        
