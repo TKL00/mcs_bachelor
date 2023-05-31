@@ -8,7 +8,6 @@ import networkx as nx
 import networkx.algorithms.isomorphism as iso
 from queue import Queue
 import copy
-from molecules import *
 import time
 
 
