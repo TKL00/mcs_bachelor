@@ -155,6 +155,40 @@ def table3():
 
     return None 
 
+def table3_test_branches():
+    path = "../unlabelled_anchored_graphs"
+
+    print(f"graph seq\tmax extension\ttime (s)")
+    all_graphs = []
+    anchored_edges = []
+    for (root, dirs, files) in os.walk(path):
+        
+        anchor_files = sorted(list(filter(lambda name: "anchor" in name, files)))
+        graph_files = sorted(list(filter(lambda name: name.endswith(".txt") and "anchor" not in name, files)))
+        for graph_file in graph_files:
+            full_file_path = os.path.join(path, graph_file)
+            if full_file_path.endswith(".txt"):
+                g = nx.read_adjlist(full_file_path, nodetype=int)
+                all_graphs.append(g)
+        
+        for anchor_file in anchor_files:
+            anchor_path = os.path.join(path, anchor_file)
+            with open(anchor_path) as f:
+                graph_anchored_edges = []
+                for lines in f:
+                    indices = lines.split(",")
+                    graph_anchored_edges.append((int(indices[0]), int(indices[1])))
+                anchored_edges.append(graph_anchored_edges)
+    
+    
+    fixed_graphs = [fix_edge_ordering(G) for G in all_graphs]
+
+    g1_index = 1
+    g2_index = 3
+
+    iterative_approach([fixed_graphs[g1_index], fixed_graphs[g2_index]], [[anchored_edges[g1_index][0], anchored_edges[g2_index][0]],
+                                                                          [anchored_edges[g1_index][1], anchored_edges[g2_index][1]], 
+                                                                          [anchored_edges[g1_index][2], anchored_edges[g2_index][2]]])
 
 ## Gathering data from the graphs supplied by Daniel
 def table4():
@@ -355,4 +389,5 @@ if __name__ == "__main__":
     # table3()
     # table4()
     # table5()
-    table4_all()
+    # table4_all()
+    table3_test_branches()

@@ -10,7 +10,8 @@ def _has_node_in_common(u, v, n_coordinates):
 ### Authors: Tobias Klink Lehn (toleh20@student.sdu.dk) and Kasper Halkjær Beider (kbeid20@student.sdu.dk)
 def product_graph_no_limit(L):
     """
-        Computes the modular product of a list of graphs.
+        Computes the modular product of a list of graphs. Edges in the returned modular product are decorated with red/blue colors
+        following the definition of the modular product.
     """
 
     product_graph = nx.Graph()
@@ -74,8 +75,9 @@ def product_graph_limit(L, anchor_nodes, molecule=False):
         nodes are also included.
 
         `Parameters`:
-            L: List of line graphs
+            L: List of graphs
             anchor_nodes: list of anchor nodes in the product graph of the form (v_1, v_2, ..., v_n)
+            molecule (Boolean): Indicates whether the graphs are decorated with molecule attributes or not
 
         `Returns`:
             product_graph (Graph): A NetworkX graph that contains anchor nodes and all nodes connected to anchor. If the 
@@ -115,8 +117,6 @@ def product_graph_limit(L, anchor_nodes, molecule=False):
     node_list = [sorted(list(g.nodes)) for g in L]
     n_graphs = len(L)
     ## Computes the cartesian products of all the node sets of the graphs in L.
-    ## NOTE: Instead of cartesian product of all node sets, do cartesian product on sets 
-    ## of single bonds, double bonds etc. and unify these.
     product_nodes = list(itertools.product(*node_list))
 
     ## filter product_nodes based on atom_pairs and bond_types if looking at a molecule

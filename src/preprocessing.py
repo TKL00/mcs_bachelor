@@ -4,7 +4,10 @@ from draw_graphs import draw_one_graph
 import copy 
 
 def BFS_w_distance(G, anchored_nodes):
-
+    """
+        Simple BFS function that returns a distance map, such that for each node in G
+        the map indicates the distance to the nearest anchor node.
+    """
     source = anchored_nodes[0]
     node_distances = {}
     color_dict = {i: "w" for i in G.nodes}
@@ -35,8 +38,13 @@ def BFS_w_distance(G, anchored_nodes):
 
 def anchor_reach(L, A):
     """
-        L is a list of graphs
-        A is a list of anchored edges in each graph. E.g. A[0] all anchored edges in L[0] etc.
+        `Parameters`
+            L (list: Graph):  A list of graphs
+            A (list: Edge): A list of anchored edges in each graph. E.g. A[0] all anchored edges in L[0] etc.
+        
+        `Returns`
+            distance_map (dict: int -> [int]): distance_map[i] contains the list of distances for all vertices in L[i] to the nearest anchor node in L[i].
+            shortest_distance (int): The smallest largest distance found between anchor nodes and non-anchored nodes in all graphs in L. I.e. the smallest ''anchor diameter''
         
         returns distance maps and shortest distance
     """
@@ -65,10 +73,14 @@ def anchor_reach(L, A):
     return distance_map, shortest_distance
         
 def shrink_graphs(L, shortest_distance, distance_map):
-    """
-        L is a list of graphs
-        shortest_distance is the shortest max distance from any anchor in L
-        distance_map is a dictionary s.t distance_map[0][i] is the distance from node i to the anchor in graph 0
+    """ 
+        `Parameters`
+            L (list: Graph):  A list of graphs
+            shortest_distance (Int): The distance to shrink the graph to
+            distance_map (dict: int -> [int]): A dictionary s.t. distance_map[0][i] is the distance from node i to the anchor in graph 0
+        
+        `Returns`
+            Copies of the given graphs shrunk to the distance given by shortest_distance.  
     """
     ## Protection against introducing unintended side effects
     copied_graphs = [copy.deepcopy(graph) for graph in L]
