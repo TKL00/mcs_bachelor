@@ -432,8 +432,195 @@ def test_graphs(Gs, As, seq, molecules=False):
         print(f"time spent: {time_after-time_before} seconds")
         print()
 
-    
+def gradual_distance(L, edge_anchor, limit_pg=True, molecule=False, max_distance=100):
+    all_mappings = []
+    smallest_num_not_mapped = [100000]
+    ## recursivea auxiliary function
+    def _gradual_distance_aux(anchor, distance_to_cut, distance_map, all_mappings):
         
-        
+        if distance_to_cut > max_distance:
+            # print("Reached the max_distance limit")
+            all_mappings.append(anchor)
+            
+        else:
+            shrunk_graphs = shrink_graphs(L, distance_to_cut, distance_map)
+            found_mappings = gradual_iterative(shrunk_graphs, anchor, limit_pg, molecule)
+            
+            
+            ## BACKTRACKING
+            # num_edges_smallest = 100000000000
+            # for graph in shrunk_graphs:
+            #     length_i = len(graph.edges)
+            #     if length_i < num_edges_smallest: num_edges_smallest = length_i
+            
+            
+            print(f"trying distance {distance_to_cut}")
 
+            print(f"The number of found mappings in gradual_distance: {len(found_mappings)}")
+            
+
+            
+            for mapping in found_mappings:
+                mapping_length = len(mapping)
+                if mapping_length > len(anchor):
+                    
+                    ## BACKTRACKING
+                    # num_not_mapped_edges = num_edges_smallest - mapping_length
+                    # # If there are not already enough edges that are not mapped to exceed the current limit
+                    # if num_not_mapped_edges < smallest_num_not_mapped[0]:
+                    
+                    _gradual_distance_aux(mapping, distance_to_cut + 1, distance_map, all_mappings)
+                    # else:
+                    #     # print("Discarded branch due to backtracking")
+                else:
+                    print(f"Appending mapping to all_mappings with length: {len(mapping)}")
+                    ## when no further reach was found, append mapping and stop recursion
+                    if(len(mapping) >= 70):
+                        draw_molecules(L, [mapping], edge_anchor)
+                    all_mappings.append(mapping)
+                    
+                    ## BACKTRACKING
+                    # num_not_mapped_edges = num_edges_smallest - mapping_length
+                    # if num_not_mapped_edges < smallest_num_not_mapped[0]: 
+                    #     smallest_num_not_mapped[0] = num_not_mapped_edges
+                        # print("Updating the number of edges not mapped in the best mapping")
+                    
+            # print(f"Done with distance: {distance_to_cut} in this branch")
+    
+    ## only need the distance
+    anchored_edges_in_graphs = [ [edge_anchor[j][i] for j in range(len(edge_anchor))] for i in range(len(L))]
+    all_distance_maps = anchor_reach(L, anchored_edges_in_graphs)[0]
+    # print(all_distance_maps)
+
+    _gradual_distance_aux(edge_anchor, 1, all_distance_maps, all_mappings)
+
+    
+    return all_mappings
+
+
+def gradual_iterative(L, edge_anchor, limit_pg=True, molecule=False):
+    """
+        Computes the maximum common subgraph of all graphs in L w.r.t the anchors in edge_anchor.
         
+        `Parameters`
+            L (list: Graph): List of NetworkX graphs. Graphs may be decorated with labels.
+
+            edge_anchor (list( list(Edge))): A list of edge anchors. Each edge anchor is a list of edges,
+                                            each edge belongs to the graph in the order they are listed.
+                                            The order is always edges from L[0], L[1] and so on.
+                                            
+        `Optional`
+            limit_pg: Indicates whether the product graph should be limited to the neighbourhood of anchors or not, default to true.
+
+            molecule: Indicates whether the graphs in L are decorated molecules. If true, it is expected that each graph has
+                      attribute "atom_type" on nodes and "bond_type" on edges. This further limits the tuples in the product graph.
+                      Default to false.
+    """
+
+    def create_induced_graph(mapping, graph_extract_attributes):
+        """
+            Creates the edge induced subgraph
+            
+            The attributes are inhertied from graph_extract_attributes (which should include all edges in mapping)
+        """
+        induced_graph = nx.Graph()
+        ## Create edge-induced graph based on the given mapping
+        ## circumvent the issue of out-of-order edges
+        nodes_to_add = set()
+        for edge_list in mapping:
+            (u, v) = edge_list[0]
+            nodes_to_add.add(u)
+            nodes_to_add.add(v)
+        nodes_to_add = sorted(list(nodes_to_add))
+        induced_graph.add_nodes_from(nodes_to_add)
+        induced_graph.add_edges_from(sorted([edge_list[0] for edge_list in mapping]))
+        if molecule:
+            atom_types = nx.get_node_attributes(graph_extract_attributes, "atom_type")
+            bond_types = nx.get_edge_attributes(graph_extract_attributes, "bond_type")
+
+            nx.set_node_attributes(induced_graph, atom_types, "atom_type")
+            nx.set_edge_attributes(induced_graph, bond_types, "bond_type")
+        
+        return induced_graph
+
+
+    def _gradual_iterative_rec(L, current_mcs_graph, to_mcs_graph, all_mappings, current_mapping, anchor_bound, anchor, graph_amt, limit_pg=True, molecule=False):
+        """
+            Computes the maximal anchor extentions between current_mcs_graph and L[to_mcs_graph] and
+            recursively branches out on each maximal extension who actually includes edges outside the anchor. 
+            In case a leaf is reached, the algorithm terminates and inserts the currently built mapping into the list of all mappings.
+            
+        """
+        
+        ## If end of L is reached, add the current mapping to the global list of mappings
+        if to_mcs_graph == graph_amt:
+            all_mappings.append(current_mapping)
+            return
+
+        graph_one = current_mcs_graph
+        graph_two = L[to_mcs_graph]
+
+        ## Map edges from current best graph to the upcoming "to_mcs_graph"
+        new_anchor = [ [lists[0], lists[to_mcs_graph] ] for lists in anchor ]
+
+        mcs = mcs_list_leviBarrowBurstall([graph_one, graph_two], new_anchor, limit_pg, molecule)
+        
+        ## Filter duplicates, no need to branch multiple times for identical mappings
+        filtered_mcs = []
+        for l in mcs:
+            if sorted(l) not in filtered_mcs:
+                filtered_mcs.append(sorted(l))
+        
+        # unique_graphs, unique_mappings = find_unique_graphs(filtered_mcs, graph_one)  
+        # print(f"The length of filtered mcs: {len(filtered_mcs)}")
+        for i in range(len(filtered_mcs)):
+            # graph_to_recurse = unique_graphs[i]
+            graph_to_recurse = create_induced_graph(filtered_mcs[i],graph_one)
+            mapping_to_recurse = filtered_mcs[i]
+            ## Only add extensions of the anchor
+            if len(mapping_to_recurse) > anchor_bound:  
+                
+                ## If no mapping has been created yet, this is the first mapping
+                if not current_mapping:
+                    continue_mapping = mapping_to_recurse
+                
+                ## otherwise, update the current mapping with the new edge in this graph
+                else:
+                    new_current_mapping = copy.deepcopy(current_mapping)
+                    continue_mapping = []
+                    for i in range(len(mapping_to_recurse)):
+                        edge_list = mapping_to_recurse[i]
+                        ## Update the current mapping to include this found mapping, and update this mapping to track previous mappings including itself
+                        for j in range(len(current_mapping)):
+                            current_map = current_mapping[j]
+                            ## update those lists that include already mapped edges
+                            if edge_list[0] == current_map[0]: 
+                                ## add newly mapped member to old list of mapped members
+                                new_current_mapping[j].append(edge_list[1])
+                                ## only move those mapped edges forward with newly mapped edges
+                                continue_mapping.append(new_current_mapping[j])
+                ## Continue recursively
+                _gradual_iterative_rec(L, graph_to_recurse, to_mcs_graph + 1, all_mappings, continue_mapping, anchor_bound, anchor, graph_amt, limit_pg, molecule)
+
+    ## Use anchor_size as guard in the recursive step, terminating branches that reach this length
+    anchor_size = len(edge_anchor)
+    mapping_list = []
+
+    ## first recursive step is between graph 0 and graph 1. 
+    ## the mapping list is updated for each recursive call that ends up with 
+    ## an actual extension of the anchor.
+    _gradual_iterative_rec(L, L[0], 1, mapping_list, [], anchor_size, edge_anchor, len(L), limit_pg, molecule)
+
+    ## No extensions found, the mapping is the anchor
+    if not mapping_list:
+        mapping_list = [edge_anchor]
+        
+    else:
+        filtered_mappings = []
+        for l in mapping_list:
+            if sorted(l) not in filtered_mappings:
+                filtered_mappings.append(sorted(l))
+        mapping_list = filtered_mappings
+
+    ## Some extensions found, possibly some duplicates.
+    return mapping_list
